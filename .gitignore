@@ -1,0 +1,70 @@
+# =========================
+# DEPENDENCIAS
+# =========================
+node_modules/
+**/node_modules/
+
+# =========================
+# BUILD / DIST
+# =========================
+build/
+dist/
+frontend/build/
+
+# =========================
+# VARIAVEIS DE AMBIENTE
+# =========================
+.env
+.env.*
+frontend/.env
+backend/.env
+
+# =========================
+# LOGS
+# =========================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# CACHE
+# =========================
+.cache/
+.parcel-cache/
+.eslintcache
+*.tsbuildinfo
+
+# =========================
+# IDE / EDITOR
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# SISTEMA OPERACIONAL
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# TESTES / COVERAGE
+# =========================
+coverage/
+.nyc_output/
+
+# =========================
+# ARQUIVOS TEMPORARIOS
+# =========================
+tmp/
+temp/
+
+# =========================
+# OPTIONAL (SE USAR)
+# =========================
+# uploads/
+# database.sqlite
