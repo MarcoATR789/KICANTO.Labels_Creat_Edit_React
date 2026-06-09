@@ -3,6 +3,7 @@ import EditarMateriaPrima from './etiquetas/editar_materia_prima.js';
 import ImprimirLote from './imprimir/imprimir_composicao.js';
 import ImprimirColunas from './imprimir/imprimir_colunas.js';
 import ImprimirMateriaPrima from './imprimir/imprimir_materia_prima.js';
+import ImprimirExcesso from './imprimir/imprimir_excesso.js';
 
 const abas = [
   {
@@ -34,7 +35,14 @@ const abas = [
     nome: 'IMPRIMIR COLUNAS\n4X1',
     descricao: 'Impressão com 4 Colunas sem Lote.',
     componente: ImprimirColunas
+  },
+  {
+    id: 'etiquetas-excesso',
+    nome: 'EXCESSO DE ETIQUETAS',
+    descricao: 'Excesso de etiquetas com Lote.',
+    componente: ImprimirExcesso
   }
 ];
+
 
 export default abas;

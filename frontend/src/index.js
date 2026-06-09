@@ -2,9 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/index.css';
 import App from './app/App';
-import { instalarFetchAutenticado } from './auth/apiFetch';
+import { instalarFetch } from './auth/apiFetch';
 
-instalarFetchAutenticado();
+instalarFetch();
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

@@ -1,11 +1,8 @@
-/* ====== TOKENS (variáveis) ====== */
 :root {
-  /* Primary Colors */
   --primary-dark: #667eea;
   --primary-light: #5568d3;
   --secondary: #764ba2;
 
-  /* Neutral Colors */
   --text-primary: #333;
   --text-secondary: #999;
   --bg-light: #f5f7fa;
@@ -14,28 +11,28 @@
   --border-light: #f0f0f0;
   --bg-gray: #f8f9fa;
 
-  /* Alert Colors */
   --alert-error-bg: #fee;
   --alert-error-text: #c33;
   --alert-success-bg: #efe;
   --alert-success-text: #3a3;
 
-  /* Button Colors */
   --btn-reset-bg: #f0f0f0;
   --btn-reset-text: #333;
   --btn-disabled: #ccc;
 }
 
-/* ====== LAYOUT BASE ====== */
+/* LAYOUT BASE */
 .App {
   background: #e8e8e8;
   min-height: 100vh;
   background-attachment: fixed;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .App-header {
   margin: 0;
-  background-color: #2074d4;
+  background-color: #00923f;
   padding: 7px 30px;
   text-align: left;
 }
@@ -45,7 +42,7 @@
   margin: 0;
   font-size: 30px;
   font-weight: 700;
-  letter-spacing: -0.5px;
+  letter-spacing: 0;
 }
 
 .App-header span {
@@ -67,20 +64,26 @@
 
 .App-main,
 .App-img {
-  width: 100%;
+  width: calc(100% - 54px);
+  max-width: 100%;
   height: auto;
   margin: 27px;
+  min-width: 0;
 }
 
 @media (min-width: 1200px) {
+  .App-main,
+  .App-img {
+    width: calc(50% - 40.5px);
+    max-width: none;
+  }
+
   .App-main {
-    max-width: 48%;
     margin-right: 0;
     float: left;
   }
 
   .App-img {
-    max-width: 48%;
     margin-left: 0;
     float: right;
   }
@@ -96,17 +99,18 @@
 .App-main .content-wrapper,
 .App-img .content-wrapper {
   background: var(--bg-white);
-  /* CSS1 tinha padding comentado; CSS2 tinha padding 12px.
-     Mantive o padding (mais seguro pra layout). Se quiser “zerado”, comente. */
   padding: 12px;
-  position: relative; /* CSS1 */
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .App-img .content-wrapper {
-  width: fit-content;
+  overflow-x: auto;
 }
 
-/* ====== ALERTAS ====== */
+/* ALERTAS */
 .alert {
   position: fixed;
   left: 20px;
@@ -134,7 +138,7 @@
   color: #f3f3f3;
 }
 
-/* ====== TABELAS ====== */
+/* TABELAS */
 .tabelas-section {
   background: #ffffff;
   padding: 20px;
@@ -145,7 +149,6 @@
 .tabelas-section h2 {
   margin: 0 20px 20px 0;
   color: var(--text-primary);
-  /* entre CSS1 (bold/19px) e CSS2 (600/20px) */
   font-weight: 700;
   font-size: 19px;
 }
@@ -161,6 +164,17 @@
 .tabela-variaveis {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.tabela-variaveis th:first-child,
+.tabela-variaveis td:first-child {
+  width: 42%;
+}
+
+.tabela-variaveis th:last-child,
+.tabela-variaveis td:last-child {
+  width: 58%;
 }
 
 .tabela-variaveis th {
@@ -177,6 +191,8 @@
   padding: 12px 4px;
   border-bottom: 1px solid var(--border-light);
   background-color: var(--bg-white);
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .tabela-variaveis tr:hover td {
@@ -185,15 +201,14 @@
 
 .label-nomes {
   font-size: 15px;
-  color: #2074d4;
+  color: #00923f;
   font-weight: bold;
 }
 
-/* do CSS1 */
 .btn-peso .button {
   background: none;
   border: none;
-  color: #2074d4;
+  color: #00923f;
   font-size: 15px;
   font-weight: bold;
   cursor: pointer;
@@ -201,6 +216,7 @@
 
 .tabela-variaveis input {
   width: 100%;
+  min-width: 0;
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -211,7 +227,7 @@
   overflow-wrap: break-word;
   min-height: 50px;
   box-sizing: border-box;
-  font-style: normal !important; /* CSS1 */
+  font-style: normal !important;
 }
 
 @media (max-width: 1024px) {
@@ -243,7 +259,7 @@
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-/* ====== BOTÕES (grupo) ====== */
+/* BOTÕES */
 .button-group {
   display: flex;
   gap: 5px;
@@ -257,6 +273,37 @@
   -webkit-text-size-adjust: 100%;
 }
 
+.button-group .controle-quantidade {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.button-group .btn-quantidade-ajuste {
+  min-width: 25px;
+  padding: 10px 5px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.button-group .input-quantidade {
+  width: 55px;
+  min-height: 35px;
+  padding: 5px 5px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 500;
+  background: var(--bg-white);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+}
+
 @media (max-width: 600px) {
   .button-group {
     flex-direction: column;
@@ -266,6 +313,14 @@
 
   .button-group button {
     width: 100%;
+  }
+
+  .button-group .controle-quantidade {
+    justify-content: center;
+  }
+
+  .button-group .controle-quantidade button {
+    width: auto;
   }
 }
 
@@ -290,7 +345,7 @@
   font-size: 14px;
   font-weight: 500;
   transition: all 0.2s ease;
-  display: inline-left;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
 }
@@ -308,7 +363,6 @@
   transform: translateY(0);
 }
 
-/* Variações (CSS1 tinha várias classes só com fonte/cor) */
 .button-group .btn-cancelar,
 .button-group .btn-limpar,
 .button-group .btn-salvar,
@@ -321,23 +375,19 @@
   color: var(--text-primary); /* CSS1 */
 }
 
-/* Se você quiser as cores “fortes” do CSS2, descomente:
-.button-group .btn-cancelar { color:#d32f2f; }
-.button-group .btn-limpar   { color:#c07d00; }
-*/
-
 .button-group .btn-excluir {
   background: #d32f2f;
   color: #fff;
-  border-radius: 4px; /* CSS1 */
+  border-radius: 4px;
   border: none;
   padding: 8px 14px;
   cursor: pointer;
 }
 
-/* ====== INPUT “nome arquivo” ====== */
+/* INPUT */
 .nome-arquivo {
   flex: 1;
+  min-width: 0;
   padding: 12px;
   border: 2px solid var(--border);
   border-radius: 4px;
@@ -345,7 +395,7 @@
   font-weight: bold;
   background-color: var(--bg-white);
   transition: border-color 0.2s;
-  font-style: normal !important; /* preferi CSS1 (sem itálico) */
+  font-style: normal !important;
 }
 
 .nome-arquivo:focus {
@@ -353,7 +403,7 @@
   border-color: var(--primary-dark);
 }
 
-/* ====== BOTÕES “export / reset” ====== */
+/* BOTÕES */
 .export-btn {
   background-color: var(--primary-dark);
   color: var(--bg-white);
@@ -387,7 +437,7 @@
   transform: translateY(0);
 }
 
-/* ====== EMPTY STATE ====== */
+/* ESTADO VAZIO */
 .empty-state {
   text-align: center;
   color: var(--text-secondary);
@@ -396,15 +446,16 @@
   font-weight: 400;
 }
 
-/* ====== SELECT ====== */
+/* SELECT */
 .select-etiquetas {
   padding: 10px 12px;
-  border-radius: 10px; /* CSS2 */
+  border-radius: 10px;
   border: 1px solid var(--border);
   background-color: var(--bg-white);
   font-size: 14px;
   font-style: normal !important;
   min-width: 200px;
+  max-width: 100%;
   margin: 5px 0;
 }
 
@@ -414,17 +465,15 @@
   font-weight: normal;
 }
 
-/* Quando está vazio, “cara de placeholder” */
 .select-etiquetas[data-empty="true"] {
   color: #888;
 }
 
-/* Quando tem valor selecionado */
 .select-etiquetas[data-empty="false"] {
   color: #111;
 }
 
-/* ====== BOTÃO FECHAR ====== */
+/* BOTÃO FECHAR */
 .btn-fechar {
   position: absolute;
   top: 12px;
@@ -450,7 +499,7 @@
   outline: none;
 }
 
-/* ====== FILTRO ====== */
+/* FILTRO */
 .filtro-etiquetas {
   display: flex;
   flex-direction: column;
@@ -469,6 +518,7 @@
   font-weight: bold;
   color: var(--text-primary);
   font-size: 20px;
+  padding-right: 32px;
 }
 
 .filtro-titulo span {
@@ -480,11 +530,14 @@
   display: flex;
   gap: 10px;
   align-items: center;
+  min-width: 0;
 }
 
 .filtro-combo {
   display: flex;
   flex: 1;
+  min-width: 0;
+  width: 100%;
   border: 1px solid var(--border);
   border-radius: 6px;
   overflow: hidden;
@@ -493,6 +546,7 @@
 
 .filtro-input {
   flex: 1;
+  min-width: 0;
   border: none;
   padding: 10px 12px;
   font-size: 14px;
@@ -503,6 +557,7 @@
   border: none;
   padding: 10px 12px;
   min-width: 220px;
+  max-width: 100%;
   font-size: 14px;
   background: var(--bg-white);
   border-left: 1px solid var(--border);
@@ -521,7 +576,82 @@
   outline: none;
 }
 
-/* ====== MODAL (unificado: suporta os dois nomes) ====== */
+@media (max-width: 600px) {
+  .App-main,
+  .App-img {
+    width: calc(100% - 32px);
+    margin: 16px;
+  }
+
+  .App-main .content-wrapper,
+  .App-img .content-wrapper {
+    padding: 12px;
+  }
+
+  .tabelas-section {
+    padding: 16px;
+  }
+
+  .tabelas-section h2,
+  .filtro-titulo {
+    font-size: 18px;
+    line-height: 1.25;
+  }
+
+  .filtro-row,
+  .filtro-combo {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .filtro-input,
+  .filtro-select,
+  .select-etiquetas {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .filtro-select {
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .tabela-variaveis th,
+  .tabela-variaveis td {
+    padding: 10px 4px;
+  }
+
+  .label-nomes {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 380px) {
+  .App-main,
+  .App-img {
+    width: calc(100% - 24px);
+    margin: 12px;
+  }
+
+  .App-main .content-wrapper,
+  .App-img .content-wrapper,
+  .tabelas-section {
+    padding: 12px;
+  }
+
+  .tabela-variaveis th:first-child,
+  .tabela-variaveis td:first-child {
+    width: 44%;
+  }
+
+  .tabela-variaveis th:last-child,
+  .tabela-variaveis td:last-child {
+    width: 56%;
+  }
+}
+
+/* MODAL */
 .modal-backdrop,
 .excluir-backdrop {
   position: fixed;

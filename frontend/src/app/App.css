@@ -76,3 +76,78 @@
   max-width: 440px;
   box-sizing: border-box;
 }
+
+.troca-senha-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.troca-senha-modal {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 320px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.troca-senha-modal h3 {
+  margin: 0 0 14px;
+}
+
+.troca-senha-modal p {
+  margin: 0 0 16px;
+}
+
+.troca-senha-campos {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.troca-senha-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.troca-senha-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.troca-senha-acoes {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  gap: 12px;
+}
+
+.troca-senha-cancelar,
+.troca-senha-confirmar {
+  border: none;
+  padding: 8px 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.troca-senha-cancelar:disabled,
+.troca-senha-confirmar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.troca-senha-confirmar {
+  background: #00923f;
+  color: white;
+}

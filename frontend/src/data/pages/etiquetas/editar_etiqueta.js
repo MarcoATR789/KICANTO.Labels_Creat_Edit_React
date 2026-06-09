@@ -1,13 +1,13 @@
-﻿// IMPORTA OS HOOKS NECESSÁRIOS DO REACT E OUTROS MÓDULOS.
+﻿// IMPORT HOOKS.
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import API_BASE_URL from '../../../config/apiBase';
 import '../../css/pages.css';
 import baseTemplate from '../../zpl/base_etiqueta_composicao.zpl';
 
-// DEFINE A URL BASE DA API, USANDO UMA VARIÁVEL DE AMBIENTE OU UM VALOR PADRÃO.
-const API_BASE_URL = process.env.REACT_APP_API_URL || '';
+// OCULTA PESQUISA DE MATERIA PRIMA.
 const TITULO_OCULTO_NESTA_TELA = 'MATÉRIA PRIMA';
 
-// MAPEIA OS NOMES INTERNOS DAS VARIÁVEIS PARA NOMES AMIGÁVEIS EXIBIDOS NA INTERFACE.
+// RENOMEIA AS VARIAVEIS.
 const LABEL_NAMES = {
   'VARIAVEL_CODIGO': 'CÓDIGO DO PRODUTO:',
   'VARIAVEL_TITULO': 'TÍTULO:',
@@ -23,6 +23,7 @@ const LABEL_NAMES = {
   'PRAZO_VALIDADE': 'PRAZO DE VALIDADE:',
 };
 
+// CAMPOS OBRIGATÓRIOS PARA PODER EDITAR / SALVAR.
 const CAMPOS_OBRIGATORIOS = [
   'VARIAVEL_CODIGO',
   'VARIAVEL_TITULO',
@@ -32,6 +33,7 @@ const CAMPOS_OBRIGATORIOS = [
   //'VARIAVEL_ID_1',
 ];
 
+// PRESISTE COM OO VALOR DO CAMPO AO COPIAR.
 const CAMPOS_MANTER_COPIA = new Set([
   'VARIAVEL_TITULO',
   'VARIAVEL_INDICADO',
@@ -42,7 +44,7 @@ const CAMPOS_MANTER_COPIA = new Set([
   'VARIAVEL_ID_4',
 ]);
 
-// CONFIGURAÇÕES PARA A API DO LABELARY, USADA PARA GERAR A PRÉ-VISUALIZAÇÃO DA ETIQUETA.
+// CONFIGURAÇÃO DA API DO LABELARY.
 const LABELARY_API_CONFIG = {
   DPI: '8dpmm',
   LARGURA: '4.09',
@@ -50,13 +52,13 @@ const LABELARY_API_CONFIG = {
   INDICE: '0',
 };
 
-// CONSTRÓI A URL DA API DO LABELARY PARA OBTER A IMAGEM DE PRÉ-VISUALIZAÇÃO.
+// GERA A URL PARA A API DO LABELARY.
 const obterUrlLabelary = (zplCodificado) => {
   const { DPI, LARGURA, ALTURA, INDICE } = LABELARY_API_CONFIG;
   return `https://api.labelary.com/v1/printers/${DPI}/labels/${LARGURA}x${ALTURA}/${INDICE}/${zplCodificado}`;
 };
 
-// FUNÇÃO PARA CALCULAR O DIA DO ANO PARA UMA DATA DADA.
+// CALCULA O DIA DO ANO DA DATA INSERIDA.
 const obterDiaDoAno = (data) => {
   const inicio = new Date(data.getFullYear(), 0, 0);
   const diferenca = data - inicio;
@@ -77,7 +79,7 @@ const obterDataFabricacaoDaLista = (listaEtiquetas) => {
   return new Date();
 };
 
-// FUNÇÃO GENÉRICA PARA OBTER UM CAMPO (ex: VARIAVEL_TITULO, VARIAVEL_PESO) A PARTIR DOS DADOS SALVOS.
+// OBTER CAMPO A PARTIR DOS DADOS SALVOS.
 const obterCampoDaEtiqueta = (item, campoId) => {
   try {
     const dados = typeof item.dados === 'string' ? JSON.parse(item.dados) : item.dados;
@@ -102,15 +104,15 @@ const normalizarTexto = (texto) => String(texto ?? '')
   .replace(/[\u0300-\u036f]/g, '')
   .toLowerCase();
 
-// ====== EAN-8 (GERA SEMPRE A PARTIR DO VARIAVEL_CODIGO) ======
+// GERAÇÃO DO EAN-8.
 const gerarBarrasEan8 = (codigo3) => {
   const c = String(codigo3 || '').replace(/\D/g, '').slice(0, 3);
   if (c.length !== 3) return '';
 
-  // 7 dígitos base do EAN-8 (sem DV)
+  // 7 DIGITOS BASE
   const baseEan7 = `2${'390' + c}`;
 
-  // EAN-8: posições ímpares * 3 + pares * 1
+  // CALCULO DO DÍGITO VERIFICADOR
   let somaImpares = 0;
   let somaPares = 0;
 
@@ -124,17 +126,17 @@ const gerarBarrasEan8 = (codigo3) => {
   const total = somaImpares * 3 + somaPares;
   const dv = (10 - (total % 10)) % 10;
 
-  return `${baseEan7}${dv}`; // 8 dígitos
+  return `${baseEan7}${dv}`;
 };
 
-// UPSERT por id (evita duplicatas)
+// UPSERT POR ID (IF EXISTE, ATUALIZA; IF NOT, ADICIONA).
 const upsertById = (arr, item) => {
   const map = new Map(arr.map(x => [x.id, x]));
   map.set(item.id, item);
   return Array.from(map.values());
 };
 
-// COMPONENTE QUE RENDERIZA O FORMULÁRIO COM OS CAMPOS DE ENTRADA PARA AS VARIÁVEIS.
+// RENDERIZA O FORMULÁRIO DE EDIÇÃO DA ETIQUETA.
 const FormularioEtiqueta = ({ etiquetas, MudarEtiqueta }) => (
   <div className="wrapper-tabela-variaveis">
     <table className="tabela-variaveis">
@@ -201,12 +203,12 @@ const FormularioEtiqueta = ({ etiquetas, MudarEtiqueta }) => (
   </div>
 );
 
-// COMPONENTE QUE EXIBE A IMAGEM DE PRÉ-VISUALIZAÇÃO DA ETIQUETA.
+// PNG ETIQUETA GERADA PELO LABELARY.
 const ImagemPreview = ({ src }) => (
   src && <img src={src} className="label-preview" alt="Pré-visualização da etiqueta" />
 );
 
-// COMPONENTE QUE RENDERIZA OS BOTÕES DE AÇÃO (SALVAR, LIMPAR, CANCELAR).
+// BOTÕES DA PAGINA (SALVAR, EDITAR, LIMPAR, CANCELAR).
 const BtnAction = ({
   filtro,
   onFiltroChange,
@@ -299,7 +301,7 @@ const BtnAction = ({
 );
 
 function EditarEtiqueta({ onVoltar }) {
-  // ESTADOS DO COMPONENTE
+
   const [etiquetas, setEtiquetas] = useState([]);
   const [conteudoArquivo, setConteudoArquivo] = useState('');
   const [erro, setErro] = useState('');
@@ -355,7 +357,7 @@ function EditarEtiqueta({ onVoltar }) {
     });
   }, [etiquetas]);
 
-  // FUNÇÃO PARA EXTRAIR AS VARIÁVEIS (EX: {VARIAVEL_TITULO}) DO CONTEÚDO DO ARQUIVO ZPL.
+  // EXTRAIR VARIAVEIS PARA GERAR FORMULARIO
   const extrairVariaveis = useCallback((conteudo) => {
     const regex = /\{(\w+)\}/g;
     const correspondencias = [...new Set([...conteudo.matchAll(regex)].map(m => m[1]))];
@@ -366,18 +368,19 @@ function EditarEtiqueta({ onVoltar }) {
     setErro('');
     setSucesso('');
 
-    // VALIDAÇÕES ANTES DE SALVAR A ETIQUETA.
+    // VALIDAR ANTES DE SALVAR A ETIQUETA.
     if (!formularioValido) {
       setErro('Preencha todos os campos obrigatórios antes de salvar ou editar a etiqueta.');
       setTimeout(() => setErro(''), 2000);
       return;
     }
 
-    // NÃO SALVA VARIAVEL_BARRAS NO BANCO (sempre será gerado a partir do VARIAVEL_CODIGO)
+    // NÃO SALVA VARIAVEL_BARRAS NO B.D
     const etiquetasParaSalvar = etiquetas.filter(e =>
       !['VARIAVEL_DATA', 'PRAZO_VALIDADE', 'VARIAVEL_BARRAS'].includes(e.id)
     );
 
+    // ENDPOINT POST (CRIAR) OU PUT (EDITAR)
     const url = etiquetaEmEdicao
       ? `${API_BASE_URL}/api/etiquetas/${etiquetaEmEdicao}`
       : `${API_BASE_URL}/api/etiquetas`;
@@ -388,7 +391,7 @@ function EditarEtiqueta({ onVoltar }) {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        nome: nomeArquivo, // EX: 390000
+        nome: nomeArquivo,
         etiquetas: etiquetasParaSalvar
       })
     });
@@ -412,7 +415,7 @@ function EditarEtiqueta({ onVoltar }) {
     resetarParaEstadoInicial();
   };
 
-  // FUNÇÃO PARA RESETAR O FORMULÁRIO PARA O ESTADO INICIAL.
+  // RESET DO FORMULARIO.
   const resetarParaEstadoInicial = useCallback(() => {
     if (!conteudoArquivo) return;
 
@@ -432,10 +435,10 @@ function EditarEtiqueta({ onVoltar }) {
 
     setEtiquetas(etiquetasBase);
 
-    // VOLTA O SELECT PARA "Selecionar uma etiqueta"
+    // RETORNA SELEÇÃO PARA "Selecionar uma etiqueta"
     setEtiquetaSelecionadaId('');
 
-    // LIMPA ESTADOS DE EDIÇÃO/EXCLUSÃO
+    // LIMPA ESTADOS DE EDIÇÃO / EXCLUSÃO
     setEtiquetaEmEdicao(null);
     setEtiquetaParaExcluir(null);
     setMostrarConfirmacao(false);
@@ -517,7 +520,7 @@ function EditarEtiqueta({ onVoltar }) {
     }
   };
 
-  // AO SELECIONAR ETIQUETA DA LISTA
+  // IF SELECIONAR ETIQUETA DA LISTA
   const aoSelecionarEtiqueta = (id) => {
     setEtiquetaSelecionadaId(id);
 
@@ -526,7 +529,7 @@ function EditarEtiqueta({ onVoltar }) {
     carregarEtiqueta(id);
   };
 
-  // EFEITO PARA CARREGAR O ARQUIVO DE TEMPLATE ZPL NA INICIALIZAÃ‡ÃƒO DO COMPONENTE.
+  // EFEITO PARA CARREGAR ZPL.
   useEffect(() => {
     const carregarArquivoBase = async () => {
       try {
@@ -557,7 +560,7 @@ function EditarEtiqueta({ onVoltar }) {
     carregarArquivoBase();
   }, [extrairVariaveis]);
 
-  // FUNÇÃO MEMORIZADA PARA PROCESSAR O CONTEÚDO, SUBSTITUINDO AS VARIÁVEIS PELOS VALORES DO USUÁRIO.
+  // SUBSTITUIR VARIÁVEIS PELOS VALORES DO USUÁRIO.
   const obterConteudoProcessado = useCallback(() => {
     const conteudoSemData = conteudoArquivo.replaceAll('{VARIAVEL_DATA}', '');
     return etiquetas.reduce((acc, etiqueta) =>
@@ -566,7 +569,7 @@ function EditarEtiqueta({ onVoltar }) {
     );
   }, [etiquetas, conteudoArquivo]);
 
-  // EFEITO PARA ATUALIZAR A PRÉ-VISUALIZAÇÃO DA ETIQUETA QUANDO OS DADOS MUDAM.
+  // ATUALIZAR PRÉ-VISUALIZAÇÃO DA ETIQUETA CONFORME DIGITAÇÃO.
   useEffect(() => {
     const temporizadorDebounce = setTimeout(() => {
       const conteudo = obterConteudoProcessado();
@@ -579,7 +582,7 @@ function EditarEtiqueta({ onVoltar }) {
     return () => clearTimeout(temporizadorDebounce);
   }, [obterConteudoProcessado]);
 
-  // FUNÇÃO PARA LIDAR COM A MUDANÇA NOS CAMPOS DE INPUT.
+  // LEITURA PARA MUDANÇA DE INPUT.
   const aoMudarCampo = useCallback((id, valor) => {
     let valorProcessado = valor;
     switch (id) {
@@ -592,7 +595,7 @@ function EditarEtiqueta({ onVoltar }) {
             e.id === id ? { ...e, valor: valorProcessado } : e
           ));
 
-          // SÓ GERA CÓDIGO DE BARRAS QUANDO TIVER OS 3 DÍGITOS FINAIS
+          // SÓ GERA BARRAS COM OS 3 NUMEROS FINAIS.
           const barras = gerarBarrasEan8(apenasNumeros);
           novo = upsertById(novo, { id: 'VARIAVEL_BARRAS', nome: 'VARIAVEL_BARRAS', valor: barras });
 
@@ -609,11 +612,11 @@ function EditarEtiqueta({ onVoltar }) {
         break;
 
       case 'VARIAVEL_TITULO':
-        valorProcessado = String(valor).replace(/[^\p{L}\s]/gu, '').toUpperCase();
+        valorProcessado = String(valor).replace(/[^\p{L}\s"./-]/gu, '').toUpperCase();
         break;
 
       case 'VARIAVEL_INDICADO':
-        valorProcessado = String(valor).replace(/[0-9]/g, '').slice(0, 35);
+        valorProcessado = String(valor).replace(/[0-9]/g, '').slice(0, 55);
         break;
 
       // case 'VARIAVEL_BARRAS':
@@ -653,7 +656,7 @@ function EditarEtiqueta({ onVoltar }) {
     ));
   }, []);
 
-  // FUNÇÃO PARA LIMPAR TODOS OS CAMPOS DO FORMULÁRIO E RESETAR O NOME DO ARQUIVO.
+  // LIMPAR DADOS DO FORMULÁRIO.
   const limparDados = () => {
     setEtiquetas(prev => prev.map(etiqueta => ({
       ...etiqueta,
@@ -676,7 +679,7 @@ function EditarEtiqueta({ onVoltar }) {
     setMostrarConfirmacao(false);
   }, []);
 
-  // OCULTAR ETIQUETAS COM NOME MATÉRIAL PRIMA
+  // OCULTAR MATERIA PRIMA E FILTRAR.
   const etiquetasFiltradas = useMemo(() => {
     const termo = normalizarTexto(filtro).trim();
     const tituloOcultoNormalizado = normalizarTexto(TITULO_OCULTO_NESTA_TELA);
@@ -695,7 +698,7 @@ function EditarEtiqueta({ onVoltar }) {
     });
   }, [filtro, etiquetasSalvas]);
 
-  // AGRUPA AS ETIQUETAS
+  // AGRUPA AS ETIQUETAS.
   const etiquetasAgrupadas = useMemo(() => {
     const grupos = {};
     etiquetasFiltradas.forEach(item => {
@@ -706,7 +709,7 @@ function EditarEtiqueta({ onVoltar }) {
     return grupos;
   }, [etiquetasFiltradas]);
 
-  // RENDERIZAÇÃO DO COMPONENTE.
+  // COMPILAÇÃO DAS INFORMAÇÕES DA PÁGINA.
   return (
     <div className="App">
       <main className="App-main">

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import API_BASE_URL from '../../../config/apiBase';
 import '../../css/pages.css';
 import baseTemplate from '../../zpl/base_etiqueta_colunas.zpl';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || '';
 const TITULO_OCULTO_NESTA_TELA = 'MATÉRIA PRIMA';
 const PREFIXO_1X_ETIQUETA = '390';
 const PREFIXO_10X_ETIQUETA = '395';
@@ -143,6 +143,10 @@ const BtnAction = ({
   etiquetasAgrupadas,
   etiquetaSelecionadaId,
   onSelecionarEtiqueta,
+  quantidadeImpressao,
+  onDiminuirQuantidade,
+  onAumentarQuantidade,
+  onMudarQuantidadeImpressao,
   onVoltar,
   onImprimir,
   onCancelar,
@@ -196,6 +200,39 @@ const BtnAction = ({
         CANCELAR
       </button>
 
+      <div className="controle-quantidade" title="Quantidade de etiquetas para impressão.">
+        <button
+          type="button"
+          className="btn-quantidade-ajuste"
+          onClick={onDiminuirQuantidade}
+          disabled={quantidadeImpressao <= 1}
+          aria-label="Diminuir quantidade"
+        >
+          -
+        </button>
+
+        <input
+          type="text"
+          className="input-quantidade"
+          value={quantidadeImpressao}
+          inputMode="numeric"
+          pattern="[0-9]*"
+          onChange={(e) => onMudarQuantidadeImpressao(e.target.value)}
+          placeholder="1"
+          aria-label="Quantidade de etiquetas"
+        />
+
+        <button
+          type="button"
+          className="btn-quantidade-ajuste"
+          onClick={onAumentarQuantidade}
+          disabled={quantidadeImpressao >= 999}
+          aria-label="Aumentar quantidade"
+        >
+          +
+        </button>
+      </div>
+
       <button
         className="btn-imprimir"
         onClick={onImprimir}
@@ -220,6 +257,7 @@ function ImprimirColunas({ onVoltar }) {
   const [filtro, setFiltro] = useState('');
   const [carregandoLista, setCarregandoLista] = useState(false);
   const [etiquetaSelecionadaId, setEtiquetaSelecionadaId] = useState('');
+  const [quantidadeImpressao, setQuantidadeImpressao] = useState(1);
 
   useEffect(() => {
     if (!erro) return undefined;
@@ -269,6 +307,7 @@ function ImprimirColunas({ onVoltar }) {
     setErro('');
     setSucesso('');
     setImprimindo(false);
+    setQuantidadeImpressao(1);
     setEtiquetas(etiquetasBase);
     setImagemPreview('');
   }, [conteudoArquivo, extrairVariaveis]);
@@ -338,6 +377,16 @@ function ImprimirColunas({ onVoltar }) {
 
   const onFiltroChange = (e) => setFiltro(e.target.value);
   const onSelecionarEtiqueta = (id) => aoSelecionarEtiqueta(id);
+  const aoMudarQuantidadeImpressao = useCallback((valor) => {
+    const somenteNumeros = String(valor ?? '').replace(/\D/g, '').slice(0, 3);
+
+    if (!somenteNumeros) {
+      setQuantidadeImpressao('');
+      return;
+    }
+
+    setQuantidadeImpressao(Number(somenteNumeros));
+  }, []);
 
   // EFEITO PARA CARREGAR O ARQUIVO DE TEMPLATE ZPL NA INICIALIZAÇÃO DO COMPONENTE.
   useEffect(() => {
@@ -389,6 +438,11 @@ function ImprimirColunas({ onVoltar }) {
 
   // EFEITO PARA ATUALIZAR A PRÉ-VISUALIZAÇÃO DA ETIQUETA QUANDO OS DADOS MUDAM.
   useEffect(() => {
+    if (!etiquetaSelecionadaId) {
+      setImagemPreview('');
+      return undefined;
+    }
+
     const temporizadorDebounce = setTimeout(() => {
       const conteudo = obterConteudoProcessado();
       if (conteudo) {
@@ -398,9 +452,11 @@ function ImprimirColunas({ onVoltar }) {
     }, 300);
 
     return () => clearTimeout(temporizadorDebounce);
-  }, [obterConteudoProcessado]);
+  }, [obterConteudoProcessado, etiquetaSelecionadaId]);
 
   const etiquetaSelecionadaOk = Boolean(etiquetaSelecionadaId);
+  const quantidadeImpressaoNumero = Number.parseInt(quantidadeImpressao, 10);
+  const quantidadeImpressaoOk = Number.isInteger(quantidadeImpressaoNumero) && quantidadeImpressaoNumero > 0 && quantidadeImpressaoNumero <= 999;
 
   // OCULTAR ETIQUETAS DE MATÉRIA PRIMA E PESO ACIMA DE 500g
   const etiquetasBase = useMemo(() => {
@@ -456,12 +512,18 @@ function ImprimirColunas({ onVoltar }) {
       return;
     }
 
+    if (!quantidadeImpressaoOk) {
+      setErro('Informe uma quantidade válida para imprimir.');
+      return;
+    }
+
     if (!conteudoArquivo) {
       setErro('Arquivo base não carregado.');
       return;
     }
 
     const zpl = obterConteudoProcessado();
+    const zplQuantidade = Array.from({ length: quantidadeImpressaoNumero }, () => zpl).join('\n');
 
     if (!zpl) {
       setErro('Não foi possível gerar o ZPL.');
@@ -473,7 +535,7 @@ function ImprimirColunas({ onVoltar }) {
       const res = await fetch(`${API_BASE_URL}/api/print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zpl })
+        body: JSON.stringify({ zpl: zplQuantidade })
       });
 
       if (!res.ok) {
@@ -481,7 +543,11 @@ function ImprimirColunas({ onVoltar }) {
         throw new Error(data.message || 'Erro ao imprimir.');
       }
 
-      setSucesso('Etiqueta enviada para impressão.');
+      setSucesso(
+        quantidadeImpressaoNumero === 1
+          ? 'Etiqueta enviada para impressão.'
+          : `${quantidadeImpressaoNumero} etiquetas enviadas para impressão.`
+      );
       setTimeout(() => {
         setSucesso('');
       }, 2000);
@@ -514,7 +580,7 @@ function ImprimirColunas({ onVoltar }) {
           {erro && <div className="alert alert-error">{erro}</div>}
           {sucesso && <div className="alert alert-success">{sucesso}</div>}
 
-          {etiquetas.length > 0 ? (
+          {etiquetas.length > 0 && (
             <>
               <BtnAction
                 filtro={filtro}
@@ -522,14 +588,23 @@ function ImprimirColunas({ onVoltar }) {
                 etiquetasAgrupadas={etiquetasAgrupadas}
                 etiquetaSelecionadaId={etiquetaSelecionadaId}
                 onSelecionarEtiqueta={onSelecionarEtiqueta}
+                quantidadeImpressao={quantidadeImpressao}
+                onDiminuirQuantidade={() => setQuantidadeImpressao(prev => {
+                  const quantidadeAtual = Number.parseInt(prev, 10);
+                  return Number.isInteger(quantidadeAtual) ? Math.max(1, quantidadeAtual - 1) : 1;
+                })}
+                onAumentarQuantidade={() => setQuantidadeImpressao(prev => {
+                  const quantidadeAtual = Number.parseInt(prev, 10);
+                  const quantidadeBase = Number.isInteger(quantidadeAtual) ? quantidadeAtual : 0;
+                  return Math.min(999, quantidadeBase + 1);
+                })}
+                onMudarQuantidadeImpressao={aoMudarQuantidadeImpressao}
                 onVoltar={onVoltar}
                 onImprimir={imprimirEtiqueta}
                 onCancelar={resetarParaEstadoInicial}
-                imprimirDisabled={!etiquetaSelecionadaOk || imprimindo}
+                imprimirDisabled={!etiquetaSelecionadaOk || !quantidadeImpressaoOk || imprimindo}
               />
             </>
-          ) : (
-            <p>Carregando...</p>
           )}
         </div>
       </main>

@@ -38,7 +38,7 @@ function ehrequestLogin(entrada) {
   }
 }
 
-export function instalarFetchAutenticado() {
+export function instalarFetch() {
   if (typeof window === 'undefined' || window.__kicantoBuscaAutenticadaInstalada) {
     return;
   }

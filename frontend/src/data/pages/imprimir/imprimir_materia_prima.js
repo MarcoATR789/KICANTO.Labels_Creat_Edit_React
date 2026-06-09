@@ -1,10 +1,10 @@
 // IMPORTA OS HOOKS NECESSÁRIOS DO REACT E OUTROS MÓDULOS.
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import API_BASE_URL from '../../../config/apiBase';
 import '../../css/pages.css';
 import baseTemplate from '../../zpl/base_materia_prima.zpl';
 
 // DEFINE A URL BASE DA API, USANDO UMA VARIÁVEL DE AMBIENTE OU UM VALOR PADRÃO.
-const API_BASE_URL = process.env.REACT_APP_API_URL || '';
 const TITULO_FIXO = 'MATÉRIA PRIMA';
 
 // MAPEIA OS NOMES INTERNOS DAS VARIÁVEIS PARA NOMES AMIGÁVEIS EXIBIDOS NA INTERFACE.
@@ -36,17 +36,79 @@ const obterDiaDoAno = (data) => {
   return Math.floor(diferenca / umDia);
 };
 
-const obterDataFabricacaoDaLista = (listaEtiquetas) => {
-  const valorDataFabricacao = listaEtiquetas.find(etiqueta => etiqueta.id === 'VARIAVEL_DATA')?.valor;
-  if (typeof valorDataFabricacao === 'string') {
-    const [dia, mes, ano] = valorDataFabricacao.split('/').map(parte => parte.trim());
-    if (dia && mes && ano) {
-      const data = new Date(Number(ano), Number(mes) - 1, Number(dia));
-      if (!Number.isNaN(data.getTime())) return data;
-    }
+const formatarDataBR = (data) => data.toLocaleDateString('pt-BR');
+
+const interpretarDataBR = (valor) => {
+  if (typeof valor !== 'string') return null;
+
+  const correspondencia = valor.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!correspondencia) return null;
+
+  const [, dia, mes, ano] = correspondencia;
+  const data = new Date(Number(ano), Number(mes) - 1, Number(dia));
+
+  if (
+    Number.isNaN(data.getTime()) ||
+    data.getDate() !== Number(dia) ||
+    data.getMonth() !== Number(mes) - 1 ||
+    data.getFullYear() !== Number(ano)
+  ) {
+    return null;
   }
 
-  return new Date();
+  return data;
+};
+
+const mascararDataDigitada = (valor) => {
+  const somenteNumeros = String(valor ?? '').replace(/\D/g, '').slice(0, 8);
+
+  if (somenteNumeros.length <= 2) return somenteNumeros;
+  if (somenteNumeros.length <= 4) {
+    return `${somenteNumeros.slice(0, 2)}/${somenteNumeros.slice(2)}`;
+  }
+
+  return `${somenteNumeros.slice(0, 2)}/${somenteNumeros.slice(2, 4)}/${somenteNumeros.slice(4)}`;
+};
+
+const obterDataFabricacaoDaLista = (listaEtiquetas) => {
+  const valorDataFabricacao = listaEtiquetas.find(etiqueta => etiqueta.id === 'VARIAVEL_DATA')?.valor;
+  return interpretarDataBR(valorDataFabricacao);
+};
+
+const limparCamposCalculados = (listaEtiquetas) => (
+  listaEtiquetas.map(etiqueta => {
+    if (etiqueta.id === 'VARIAVEL_VALIDADE') return { ...etiqueta, valor: '' };
+    if (etiqueta.id === 'VARIAVEL_LOTE') return { ...etiqueta, valor: '' };
+    return etiqueta;
+  })
+);
+
+const recalcularCamposCalculados = (listaEtiquetas) => {
+  const prazoValor = listaEtiquetas.find(etiqueta => etiqueta.id === 'PRAZO_VALIDADE')?.valor || '';
+  const prazoDias = Number.parseInt(prazoValor, 10);
+
+  if (!Number.isInteger(prazoDias) || prazoDias < 1 || prazoDias > 999) {
+    return limparCamposCalculados(listaEtiquetas);
+  }
+
+  const dataFabricacaoBase = obterDataFabricacaoDaLista(listaEtiquetas);
+  if (!dataFabricacaoBase) return limparCamposCalculados(listaEtiquetas);
+
+  const dataFabricacao = formatarDataBR(dataFabricacaoBase);
+  const dataValidadeBase = new Date(dataFabricacaoBase);
+  dataValidadeBase.setDate(dataValidadeBase.getDate() + prazoDias);
+
+  const dataValidade = formatarDataBR(dataValidadeBase);
+  const ano = dataFabricacaoBase.getFullYear().toString().slice(-2);
+  const diaDoAno = obterDiaDoAno(dataFabricacaoBase).toString().padStart(3, '0');
+  const lote = `${ano}.${diaDoAno}`;
+
+  return listaEtiquetas.map(etiqueta => {
+    if (etiqueta.id === 'VARIAVEL_DATA') return { ...etiqueta, valor: dataFabricacao };
+    if (etiqueta.id === 'VARIAVEL_VALIDADE') return { ...etiqueta, valor: dataValidade };
+    if (etiqueta.id === 'VARIAVEL_LOTE') return { ...etiqueta, valor: lote };
+    return etiqueta;
+  });
 };
 
 // FUNÇÃO PARA CALCULAR O DÍGITO VERIFICADOR DO EAN-8 A PARTIR DE 7 DÍGITOS.
@@ -156,12 +218,10 @@ const FormularioEtiqueta = ({ etiquetas, MudarEtiqueta }) => (
               ) : (
                 <input
                 type="text"
-                inputMode={etiqueta.id === 'PRAZO_VALIDADE' ? 'numeric' : undefined}
+                inputMode={['VARIAVEL_DATA', 'PRAZO_VALIDADE'].includes(etiqueta.id) ? 'numeric' : undefined}
                 pattern={etiqueta.id === 'PRAZO_VALIDADE' ? '[0-9]*' : undefined}
                 value={etiqueta.valor}
                 onChange={(e) => {
-                      if (etiqueta.id === 'VARIAVEL_DATA') return;
-
                       if (etiqueta.id === 'PRAZO_VALIDADE') {
                         const somenteNumeros = e.target.value.replace(/\D/g, '').slice(0, 3);
                         MudarEtiqueta(etiqueta.id, somenteNumeros);
@@ -170,8 +230,13 @@ const FormularioEtiqueta = ({ etiquetas, MudarEtiqueta }) => (
 
                       MudarEtiqueta(etiqueta.id, e.target.value);
                     }}
-                    placeholder={etiqueta.id === 'PRAZO_VALIDADE' ? 'Digite o número de dias.' : ''}
-                    readOnly={etiqueta.id === 'VARIAVEL_DATA'}
+                    placeholder={
+                      etiqueta.id === 'PRAZO_VALIDADE'
+                        ? 'Digite o número de dias.'
+                        : etiqueta.id === 'VARIAVEL_DATA'
+                          ? 'dia/mês/ano'
+                          : ''
+                    }
                   />
                 )}
               </td>
@@ -194,6 +259,10 @@ const BtnAction = ({
   etiquetasAgrupadas,
   etiquetaSelecionadaId,
   onSelecionarEtiqueta,
+  quantidadeImpressao,
+  onDiminuirQuantidade,
+  onAumentarQuantidade,
+  onMudarQuantidadeImpressao,
   limparDados,
   onVoltar,
   onImprimir,
@@ -252,6 +321,39 @@ const BtnAction = ({
         CANCELAR
       </button>
 
+      <div className="controle-quantidade" title="Quantidade de etiquetas para impressão.">
+        <button
+          type="button"
+          className="btn-quantidade-ajuste"
+          onClick={onDiminuirQuantidade}
+          disabled={quantidadeImpressao <= 1}
+          aria-label="Diminuir quantidade"
+        >
+          -
+        </button>
+
+        <input
+          type="text"
+          className="input-quantidade"
+          value={quantidadeImpressao}
+          inputMode="numeric"
+          pattern="[0-9]*"
+          onChange={(e) => onMudarQuantidadeImpressao(e.target.value)}
+          placeholder="1"
+          aria-label="Quantidade de etiquetas"
+        />
+
+        <button
+          type="button"
+          className="btn-quantidade-ajuste"
+          onClick={onAumentarQuantidade}
+          disabled={quantidadeImpressao >= 999}
+          aria-label="Aumentar quantidade"
+        >
+          +
+        </button>
+      </div>
+
       <button
         className="btn-imprimir"
         onClick={onImprimir}
@@ -276,6 +378,7 @@ function ImprimirMateriaPrima({ onVoltar }) {
   const [filtro, setFiltro] = useState('');
   const [carregandoLista, setCarregandoLista] = useState(false);
   const [etiquetaSelecionadaId, setEtiquetaSelecionadaId] = useState('');
+  const [quantidadeImpressao, setQuantidadeImpressao] = useState(1);
 
   useEffect(() => {
     if (!erro) return undefined;
@@ -302,7 +405,7 @@ function ImprimirMateriaPrima({ onVoltar }) {
   const resetarParaEstadoInicial = useCallback(() => {
     if (!conteudoArquivo) return;
 
-    const hojeStr = new Date().toLocaleDateString('pt-BR');
+    const hojeStr = formatarDataBR(new Date());
     const etiquetasExtraidas = extrairVariaveis(conteudoArquivo);
 
     const etiquetasBase = [
@@ -325,6 +428,7 @@ function ImprimirMateriaPrima({ onVoltar }) {
     setErro('');
     setSucesso('');
     setImprimindo(false);
+    setQuantidadeImpressao(1);
     setEtiquetas(etiquetasBase);
     setImagemPreview('');
   }, [conteudoArquivo, extrairVariaveis]);
@@ -339,18 +443,16 @@ function ImprimirMateriaPrima({ onVoltar }) {
         ? JSON.parse(data.dados)
         : data.dados;
 
-    const hojeStr = new Date().toLocaleDateString('pt-BR');
+    const hojeStr = formatarDataBR(new Date());
 
     let completas = [...etiquetasCarregadas];
 
-    // garante campos fixos no state
     completas = upsert(completas, { id: 'VARIAVEL_DATA', nome: 'VARIAVEL_DATA', valor: hojeStr });
     completas = upsert(completas, { id: 'VARIAVEL_ID_2', nome: 'VARIAVEL_ID_2', valor: '' });
     completas = upsert(completas, { id: 'PRAZO_VALIDADE', nome: 'PRAZO_VALIDADE', valor: '' });
     completas = upsert(completas, { id: 'VARIAVEL_VALIDADE', nome: 'VARIAVEL_VALIDADE', valor: '' });
     completas = upsert(completas, { id: 'VARIAVEL_LOTE', nome: 'VARIAVEL_LOTE', valor: '' });
 
-    // remove duplicatas antes de calcular barras (evita usar valor "errado" na substituição)
     completas = dedupePorIdMantendoUltimo(completas);
 
     // GERA BARRAS SEMPRE A PARTIR DO VARIAVEL_CODIGO (com DV EAN-8)
@@ -359,7 +461,6 @@ function ImprimirMateriaPrima({ onVoltar }) {
 
     completas = upsert(completas, { id: 'VARIAVEL_BARRAS', nome: 'VARIAVEL_BARRAS', valor: barras });
 
-    // garante novamente sem duplicatas (por segurança)
     completas = dedupePorIdMantendoUltimo(completas);
 
     setEtiquetas(completas);
@@ -392,6 +493,16 @@ function ImprimirMateriaPrima({ onVoltar }) {
 
   const onFiltroChange = (e) => setFiltro(e.target.value);
   const onSelecionarEtiqueta = (id) => aoSelecionarEtiqueta(id);
+  const aoMudarQuantidadeImpressao = useCallback((valor) => {
+    const somenteNumeros = String(valor ?? '').replace(/\D/g, '').slice(0, 3);
+
+    if (!somenteNumeros) {
+      setQuantidadeImpressao('');
+      return;
+    }
+
+    setQuantidadeImpressao(Number(somenteNumeros));
+  }, []);
 
   // EFEITO PARA CARREGAR O ARQUIVO DE TEMPLATE ZPL NA INICIALIZAÇÃO DO COMPONENTE.
   useEffect(() => {
@@ -410,7 +521,7 @@ function ImprimirMateriaPrima({ onVoltar }) {
             .filter(e => e.id !== 'VARIAVEL_CODIGO')
             .map(etiqueta => {
               if (etiqueta.id === 'VARIAVEL_DATA') {
-                return { ...etiqueta, valor: new Date().toLocaleDateString('pt-BR') };
+                return { ...etiqueta, valor: formatarDataBR(new Date()) };
               }
               return etiqueta;
             }),
@@ -439,6 +550,11 @@ function ImprimirMateriaPrima({ onVoltar }) {
 
   // EFEITO PARA ATUALIZAR A PRÉ-VISUALIZAÇÃO DA ETIQUETA QUANDO OS DADOS MUDAM.
   useEffect(() => {
+    if (!etiquetaSelecionadaId) {
+      setImagemPreview('');
+      return undefined;
+    }
+
     const temporizadorDebounce = setTimeout(() => {
       const conteudo = obterConteudoProcessado();
       if (conteudo) {
@@ -448,7 +564,7 @@ function ImprimirMateriaPrima({ onVoltar }) {
     }, 300);
 
     return () => clearTimeout(temporizadorDebounce);
-  }, [obterConteudoProcessado]);
+  }, [obterConteudoProcessado, etiquetaSelecionadaId]);
 
   // FUNÇÃO PARA LIDAR COM A MUDANÇA NOS CAMPOS DE INPUT.
   const aoMudarCampo = useCallback((id, valor) => {
@@ -493,6 +609,17 @@ function ImprimirMateriaPrima({ onVoltar }) {
         break;
       }
 
+      case 'VARIAVEL_DATA': {
+        valorProcessado = mascararDataDigitada(valor);
+
+        setEtiquetas(prev => recalcularCamposCalculados(
+          prev.map(etiqueta =>
+            etiqueta.id === id ? { ...etiqueta, valor: valorProcessado } : etiqueta
+          )
+        ));
+        return;
+      }
+
       case 'VARIAVEL_TITULO':
         valorProcessado = valor.replace(/[^a-zA-Z\s]/g, '').toUpperCase();
         break;
@@ -502,34 +629,19 @@ function ImprimirMateriaPrima({ onVoltar }) {
         break;
 
       case 'PRAZO_VALIDADE': {
-        if (valor === '') {
-          valorProcessado = '';
-        } else {
-          const dias = parseInt(valor, 10);
+        valorProcessado = valor.replace(/\D/g, '').slice(0, 3);
+
+        if (valorProcessado !== '') {
+          const dias = parseInt(valorProcessado, 10);
           if (isNaN(dias) || dias < 1 || dias > 999) return;
-
-          valorProcessado = valor;
-
-          setEtiquetas(prev => {
-            const dataFabricacaoBase = obterDataFabricacaoDaLista(prev);
-            const dataFabricacao = dataFabricacaoBase.toLocaleDateString('pt-BR');
-            const dataValidadeBase = new Date(dataFabricacaoBase.getTime() + dias * 24 * 60 * 60 * 1000);
-            const dataValidade = dataValidadeBase.toLocaleDateString('pt-BR');
-            const ano = dataFabricacaoBase.getFullYear().toString().slice(-2);
-            const diaDoAno = obterDiaDoAno(dataFabricacaoBase).toString().padStart(3, '0');
-            const lote = `${ano}.${diaDoAno}`;
-
-            return prev.map(etiqueta => {
-              if (etiqueta.id === 'VARIAVEL_DATA') return { ...etiqueta, valor: dataFabricacao };
-              if (etiqueta.id === 'VARIAVEL_VALIDADE') return { ...etiqueta, valor: dataValidade };
-              if (etiqueta.id === 'VARIAVEL_LOTE') return { ...etiqueta, valor: lote };
-              if (etiqueta.id === id) return { ...etiqueta, valor: valorProcessado };
-              return etiqueta;
-            });
-          });
-          return;
         }
-        break;
+
+        setEtiquetas(prev => recalcularCamposCalculados(
+          prev.map(etiqueta =>
+            etiqueta.id === id ? { ...etiqueta, valor: valorProcessado } : etiqueta
+          )
+        ));
+        return;
       }
 
       default:
@@ -557,9 +669,12 @@ function ImprimirMateriaPrima({ onVoltar }) {
 
   const prazoValidadeValor = etiquetas.find(e => e.id === 'PRAZO_VALIDADE')?.valor || '';
   const prazoValidadeDias = parseInt(prazoValidadeValor, 10);
+  const dataFabricacaoOk = Boolean(obterDataFabricacaoDaLista(etiquetas));
   const pesoValor = (etiquetas.find(e => e.id === 'VARIAVEL_ID_2')?.valor || '').toString().trim();
   const pesoOk = /^(\d{1,3})(Kg|g)$/.test(pesoValor);
   const prazoValidadeOk = Number.isInteger(prazoValidadeDias) && prazoValidadeDias > 0 && Boolean(etiquetaSelecionadaId);
+  const quantidadeImpressaoNumero = Number.parseInt(quantidadeImpressao, 10);
+  const quantidadeImpressaoOk = Number.isInteger(quantidadeImpressaoNumero) && quantidadeImpressaoNumero > 0 && quantidadeImpressaoNumero <= 999;
 
   const imprimirEtiqueta = async () => {
     setErro('');
@@ -575,12 +690,23 @@ function ImprimirMateriaPrima({ onVoltar }) {
       return;
     }
 
+    if (!dataFabricacaoOk) {
+      setErro('Informe uma data de fabricação válida no formato dd/mm/aaaa.');
+      return;
+    }
+
+    if (!quantidadeImpressaoOk) {
+      setErro('Informe uma quantidade válida para imprimir.');
+      return;
+    }
+
     if (!conteudoArquivo) {
       setErro('Arquivo base não carregado.');
       return;
     }
 
     const zpl = obterConteudoProcessado();
+    const zplQuantidade = Array.from({ length: quantidadeImpressaoNumero }, () => zpl).join('\n');
 
     if (!zpl) {
       setErro('Não foi possível gerar o ZPL.');
@@ -592,7 +718,7 @@ function ImprimirMateriaPrima({ onVoltar }) {
       const res = await fetch(`${API_BASE_URL}/api/print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zpl })
+        body: JSON.stringify({ zpl: zplQuantidade })
       });
 
       if (!res.ok) {
@@ -600,7 +726,11 @@ function ImprimirMateriaPrima({ onVoltar }) {
         throw new Error(data.message || 'Erro ao imprimir.');
       }
 
-      setSucesso('Etiqueta enviada para impressão.');
+      setSucesso(
+        quantidadeImpressaoNumero === 1
+          ? 'Etiqueta enviada para impressão.'
+          : `${quantidadeImpressaoNumero} etiquetas enviadas para impressão.`
+      );
       setTimeout(() => {
         setSucesso('');
       }, 2000);
@@ -660,20 +790,33 @@ function ImprimirMateriaPrima({ onVoltar }) {
                 etiquetasAgrupadas={etiquetasAgrupadas}
                 etiquetaSelecionadaId={etiquetaSelecionadaId}
                 onSelecionarEtiqueta={onSelecionarEtiqueta}
+                quantidadeImpressao={quantidadeImpressao}
+                onDiminuirQuantidade={() => setQuantidadeImpressao(prev => {
+                  const quantidadeAtual = Number.parseInt(prev, 10);
+                  return Number.isInteger(quantidadeAtual) ? Math.max(1, quantidadeAtual - 1) : 1;
+                })}
+                onAumentarQuantidade={() => setQuantidadeImpressao(prev => {
+                  const quantidadeAtual = Number.parseInt(prev, 10);
+                  const quantidadeBase = Number.isInteger(quantidadeAtual) ? quantidadeAtual : 0;
+                  return Math.min(999, quantidadeBase + 1);
+                })}
+                onMudarQuantidadeImpressao={aoMudarQuantidadeImpressao}
                 limparDados={limparDados}
                 onVoltar={onVoltar}
                 onImprimir={imprimirEtiqueta}
                 onCancelar={resetarParaEstadoInicial}
-                imprimirDisabled={!prazoValidadeOk || !pesoOk || imprimindo}
+                imprimirDisabled={!prazoValidadeOk || !pesoOk || !dataFabricacaoOk || !quantidadeImpressaoOk || imprimindo}
               />
 
-              <div className="tabelas-section">
-                <h2>ITENS PARA SUBSTITUIÇÃO:</h2>
-                <FormularioEtiqueta etiquetas={etiquetas} MudarEtiqueta={aoMudarCampo} />
-              </div>
+              {etiquetaSelecionadaId && (
+                <div className="tabelas-section">
+                  <h2>ITENS PARA SUBSTITUIÇÃO:</h2>
+                  <FormularioEtiqueta etiquetas={etiquetas} MudarEtiqueta={aoMudarCampo} />
+                </div>
+              )}
             </>
           ) : (
-            <p>Carregando...</p>
+            <p>Carregando</p>
           )}
         </div>
       </main>

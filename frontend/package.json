@@ -1,8 +1,8 @@
 {
-  "name": "kicanto-editor-app",
-  "version": "0.0.1",
+  "name": "agricom-etiquetas-react",
+  "version": "1.4.6",
   "private": true,
-  "proxy": "http://192.168.1.127:3001",
+  "proxy": "http://192.168.1.123:3001",
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
@@ -18,7 +18,8 @@
   "scripts": {
     "start:frontend": "react-scripts start",
     "start:backend": "node ../backend/server.js",
-    "start": "concurrently \"npm run start:frontend\" \"npm run start:backend\"",
+    "start": "react-scripts start",
+    "start:all": "concurrently \"npm run start:frontend\" \"npm run start:backend\"",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

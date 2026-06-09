@@ -1,10 +1,10 @@
 ﻿// IMPORTA OS HOOKS NECESSÁRIOS DO REACT E OUTROS MÓDULOS.
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import API_BASE_URL from '../../../config/apiBase';
 import '../../css/pages.css';
 import baseTemplate from '../../zpl/base_materia_prima.zpl';
 
 // DEFINE A URL BASE DA API, USANDO UMA VARIÁVEL DE AMBIENTE OU UM VALOR PADRÃO.
-const API_BASE_URL = process.env.REACT_APP_API_URL || '';
 const TITULO_FIXO = 'MATÉRIA PRIMA';
 
 // MAPEIA OS NOMES INTERNOS DAS VARIÁVEIS PARA NOMES AMIGÁVEIS EXIBIDOS NA INTERFACE.
