@@ -3,14 +3,14 @@ const net = require('net');
 
 const router = express.Router();
 
-const DEFAULT_PRINTER_HOST = process.env.PRINTER_HOST || '192.168.1.234';
+const DEFAULT_PRINTER_HOST = process.env.PRINTER_HOST || '192.168.1.244';
 const DEFAULT_PRINTER_PORT = Number(process.env.PRINTER_PORT || 9100);
 
 router.post('/', (req, res) => {
   const { zpl, host, port } = req.body || {};
 
   if (!zpl || typeof zpl !== 'string') {
-    return res.status(400).json({ message: 'Campo ZPL é obrigatório.' });
+    return res.status(400).json({ message: 'Campo Etiqueta é obrigatório.' });
   }
 
   const targetHost = (host && typeof host === 'string' && host.trim())

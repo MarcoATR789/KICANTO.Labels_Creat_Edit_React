@@ -20,6 +20,6 @@ app.use('/api/print', exigirAuth, rotasPrint);
 
 const PORT1 = Number(process.env.PORT || 3001);
 app.listen(PORT1, '0.0.0.0', () => {
-  console.log(`Backend rodando em: http://192.168.1.127:${PORT1}`);
-    console.log(`Frontend rodando em: http://192.168.1.127:3000`);
+  console.log(`Backend rodando em: http://192.168.1.123:${PORT1}`);
+    console.log(`Frontend rodando em: http://192.168.1.123:3000`);
 });

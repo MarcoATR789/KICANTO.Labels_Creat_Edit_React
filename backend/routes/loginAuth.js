@@ -47,4 +47,38 @@ router.get('/me', exigirAuth, (req, res) => {
   return res.json({ usuario: req.auth.usuario });
 });
 
+router.post('/trocar-senha', exigirAuth, async (req, res) => {
+  const novaSenha = typeof req.body?.novaSenha === 'string' ? req.body.novaSenha : '';
+  const confirmarNovaSenha = typeof req.body?.confirmarNovaSenha === 'string' ? req.body.confirmarNovaSenha : '';
+  const usuarioId = req.auth?.usuario?.id;
+
+  if (!novaSenha || !confirmarNovaSenha) {
+    return res.status(400).json({ message: 'Nova senha e confirmacao sao obrigatorias.' });
+  }
+
+  if (novaSenha !== confirmarNovaSenha) {
+    return res.status(400).json({ message: 'As senhas informadas nao coincidem.' });
+  }
+
+  if (!usuarioId) {
+    return res.status(401).json({ message: 'Nao autorizado. Faca login.' });
+  }
+
+  try {
+    const [resultado] = await db.query(
+      'UPDATE usuarios SET senha = ? WHERE id = ? LIMIT 1',
+      [novaSenha, usuarioId]
+    );
+
+    if (!resultado?.affectedRows) {
+      return res.status(404).json({ message: 'Usuario nao encontrado.' });
+    }
+
+    return res.json({ message: 'Senha alterada com sucesso.' });
+  } catch (err) {
+    console.error('Erro ao trocar senha', err);
+    return res.status(500).json({ message: 'Erro ao alterar senha.' });
+  }
+});
+
 module.exports = router;
