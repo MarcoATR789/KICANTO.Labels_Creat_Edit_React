@@ -1,6 +1,6 @@
 # Etiquetas - KICANTO:
 
-Sistema interno criar, editar e imprimir etiquetas em ZPL. O projeto tem frontend em React, backend em Node.js / Express, banco MySQL e scripts auxiliares para PM2 e backup do banco.
+Sistema para criar, editar e imprimir etiquetas em ZPL. O projeto tem frontend em React, backend em Node.js / Express, banco MySQL e scripts auxiliares para PM2 e backup do banco.
 
 ## Tecnologias:
 
