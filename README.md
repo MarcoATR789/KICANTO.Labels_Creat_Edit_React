@@ -12,10 +12,10 @@ Sistema interno criar, editar e imprimir etiquetas em ZPL. O projeto tem fronten
 
 ## Estrutura do projeto:
 
-backend/       API, autenticação, rotas de etiquetas e envio para impressora.
-frontend/      Aplicação React, Menus de edição / criação e templates ZPL.
-scripts/       Scripts de backup do MySQL e inicialização do PM2 no Windows.
-bkp_database/  Pasta usada para salvar backups gerados do banco.
+- `backend/`       API, autenticação, rotas de etiquetas e envio para impressora.
+- `frontend/`      Aplicação React, Menus de edição / criação e templates ZPL.
+- `scripts/`       Scripts de backup do MySQL e inicialização do PM2 no Windows.
+- `bkp_database/`  Pasta usada para salvar backups gerados do banco.
 
 ## Pré-requisitos:
 
