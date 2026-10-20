@@ -13,7 +13,7 @@ $startupScript = Join-Path $PSScriptRoot 'pm2-resurrect-before-login.ps1'
 $powershellExe = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 
 if (-not (Test-Path $startupScript)) {
-  throw "Script de inicializacao nao encontrado: $startupScript"
+  throw "Script de inicialização não encontrado: $startupScript"
 }
 
 $action = New-ScheduledTaskAction `
