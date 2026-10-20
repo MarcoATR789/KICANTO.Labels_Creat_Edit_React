@@ -11,7 +11,7 @@ router.post('/login', async (req, res) => {
   const senha = typeof req.body?.senha === 'string' ? req.body.senha : '';
 
   if (!usuario || !senha) {
-    return res.status(400).json({ message: 'Usuario e senha sao obrigatorios.' });
+    return res.status(400).json({ message: 'Usuario e senha são obrigatórios.' });
   }
 
   try {
@@ -40,7 +40,7 @@ router.post('/login', async (req, res) => {
 router.post('/logout', (req, res) => {
   const token = obterTokenDarequest(req);
   removersession(token);
-  return res.json({ message: 'Sessao encerrada.' });
+  return res.json({ message: 'Sessão encerrada.' });
 });
 
 router.get('/me', exigirAuth, (req, res) => {
@@ -53,15 +53,15 @@ router.post('/trocar-senha', exigirAuth, async (req, res) => {
   const usuarioId = req.auth?.usuario?.id;
 
   if (!novaSenha || !confirmarNovaSenha) {
-    return res.status(400).json({ message: 'Nova senha e confirmacao sao obrigatorias.' });
+    return res.status(400).json({ message: 'Nova senha e confirmação são obrigatorias.' });
   }
 
   if (novaSenha !== confirmarNovaSenha) {
-    return res.status(400).json({ message: 'As senhas informadas nao coincidem.' });
+    return res.status(400).json({ message: 'As senhas informadas não coincidem.' });
   }
 
   if (!usuarioId) {
-    return res.status(401).json({ message: 'Nao autorizado. Faca login.' });
+    return res.status(401).json({ message: 'Não autorizado. Faça login.' });
   }
 
   try {
@@ -71,7 +71,7 @@ router.post('/trocar-senha', exigirAuth, async (req, res) => {
     );
 
     if (!resultado?.affectedRows) {
-      return res.status(404).json({ message: 'Usuario nao encontrado.' });
+      return res.status(404).json({ message: 'Usuário não encontrado.' });
     }
 
     return res.json({ message: 'Senha alterada com sucesso.' });

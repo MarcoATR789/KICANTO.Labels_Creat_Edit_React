@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// SALVAR ETIQUETA (não permitir duplicar "nome")
 router.post('/', async (req, res) => {
   const { nome, etiquetas } = req.body;
 
@@ -18,7 +17,7 @@ router.post('/', async (req, res) => {
 
     return res.status(201).json({ message: 'Etiqueta salva com sucesso' });
   } catch (err) {
-    // Se houver UNIQUE(nome) no banco, cai aqui com ER_DUP_ENTRY
+
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ message: 'Já existe uma etiqueta com esse CÓDIGO DO PRODUTO.' });
     }
@@ -28,7 +27,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// LISTAR ETIQUETAS
 router.get('/', async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM etiquetas ORDER BY id DESC');
@@ -39,7 +37,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// CARREGAR ETIQUETA
 router.get('/:id', async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM etiquetas WHERE id = ? LIMIT 1', [req.params.id]);
@@ -55,7 +52,6 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// EDITAR ETIQUETA (não permitir trocar para um nome que já existe)
 router.put('/:id', async (req, res) => {
   const { nome, etiquetas } = req.body;
 
@@ -80,7 +76,6 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// EXCLUIR ETIQUETA
 router.delete('/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM etiquetas WHERE id = ?', [req.params.id]);

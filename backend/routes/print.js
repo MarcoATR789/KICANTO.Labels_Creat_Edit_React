@@ -3,7 +3,7 @@ const net = require('net');
 
 const router = express.Router();
 
-const DEFAULT_PRINTER_HOST = process.env.PRINTER_HOST || '192.168.1.244';
+const DEFAULT_PRINTER_HOST = process.env.PRINTER_HOST || '192.168.1.124';
 const DEFAULT_PRINTER_PORT = Number(process.env.PRINTER_PORT || 9100);
 
 router.post('/', (req, res) => {

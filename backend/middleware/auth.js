@@ -6,7 +6,7 @@ function exigirAuth(req, res, next) {
   const session = obtersession(token);
 
   if (!session) {
-    return res.status(401).json({ message: 'Nao autorizado. Faca login.' });
+    return res.status(401).json({ message: 'Não autorizado. Faça login.' });
   }
 
   req.auth = {
