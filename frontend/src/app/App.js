@@ -125,7 +125,7 @@ function App() {
         method: 'POST'
       });
     } catch (erro) {
-      // LOGOUT LIMPA SESSÃO MESMO COM FALHA NA API
+
     } finally {
       limparSession();
       setSession(null);

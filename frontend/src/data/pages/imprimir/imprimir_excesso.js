@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import API_BASE_URL from '../../../config/apiBase';
+import { PRINTER_HOST, PRINTER_PORT } from '../../../config/printer';
 import '../../css/pages.css';
+import FiltroEtiquetaSelect from '../filtro_etiqueta_select.js';
 
 const LABEL_NAMES = {
   'VARIAVEL_DATA': 'DATA DE FABRICAÇÃO:',
@@ -62,6 +64,11 @@ const LABEL_NAMES_ZPL = {
   'hamster_500g.zpl': 'HAMSTER - 500g',
   'hamster_5kg.zpl': 'HAMSTER - 5Kg',
   'hamster_20kg.zpl': 'HAMSTER - 20Kg',
+  'hamster_20kg_sif.zpl':'HAMSTER - 20Kg (SIF)',
+};
+
+const LABEL_SEM_OPTION = {
+  'pellet_20kg_sif.zpl': 'PELLET C.R. - 20Kg (SIF)',
   'hamster_20kg_sif.zpl':'HAMSTER - 20Kg (SIF)',
 };
 
@@ -266,9 +273,11 @@ const BtnAction = ({
 }) => (
   <>
     <div className="etiquetas-salvas">
-      <button type="button" className="btn-fechar" onClick={onVoltar}>
-        X
-      </button>
+      <div className="button-group btn-fechar">
+        <button type="button" className="btn-cancelar" onClick={onVoltar}>
+          VOLTAR
+        </button>
+      </div>
 
       <div className="filtro-etiquetas">
         <div className="filtro-titulo">FILTRAR ETIQUETA</div>
@@ -280,28 +289,12 @@ const BtnAction = ({
               value={filtro}
               onChange={onFiltroChange}
             />
-            <select
-              className="filtro-select"
+            <FiltroEtiquetaSelect
               value={templateSelecionadoId}
-              onChange={(e) => onSelecionarTemplate(e.target.value)}
-            >
-              <option value="">Selecionar uma etiqueta</option>
-              {Object.keys(templatesAgrupados).length === 0 && (
-                <option value="" disabled>Nenhum ZPL encontrado</option>
-              )}
-
-              {Object.entries(templatesAgrupados)
-                .sort(([a], [b]) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
-                .map(([grupo, itens]) => (
-                  <optgroup key={grupo} label={grupo}>
-                    {itens.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.nome}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-            </select>
+              onChange={onSelecionarTemplate}
+              grupos={templatesAgrupados}
+              emptyText="Nenhum ZPL encontrado"
+            />
           </div>
         </div>
       </div>
@@ -640,32 +633,34 @@ function ImprimirExcesso({ onVoltar }) {
 
   const prazoValidadeValor = etiquetas.find(e => e.id === 'PRAZO_VALIDADE')?.valor || '';
   const prazoValidadeDias = parseInt(prazoValidadeValor, 10);
-  const dataFabricacaoOk = Boolean(obterDataFabricacaoDaLista(etiquetas));
-  const templateSelecionadoOk = Boolean(obterTemplateExcesso(templateSelecionadoId));
-  const prazoValidadeOk = Number.isInteger(prazoValidadeDias) && prazoValidadeDias > 0 && templateSelecionadoOk;
+  const dataFabricacaoFiltro = Boolean(obterDataFabricacaoDaLista(etiquetas));
+  const templateSelecionadoFiltro = Boolean(obterTemplateExcesso(templateSelecionadoId));
+  const nomeArquivoSelecionado = templateSelecionadoId.split('/').pop();
+  const templateSemOption = Boolean(LABEL_SEM_OPTION[nomeArquivoSelecionado]);
+  const prazoValidadeFiltro = Number.isInteger(prazoValidadeDias) && prazoValidadeDias > 0 && templateSelecionadoFiltro;
   const quantidadeImpressaoNumero = Number.parseInt(quantidadeImpressao, 10);
-  const quantidadeImpressaoOk = Number.isInteger(quantidadeImpressaoNumero) && quantidadeImpressaoNumero > 0 && quantidadeImpressaoNumero <= 999;
+  const quantidadeImpressaoFiltro = Number.isInteger(quantidadeImpressaoNumero) && quantidadeImpressaoNumero > 0 && quantidadeImpressaoNumero <= 999;
 
   const imprimirEtiqueta = async () => {
     setErro('');
     setSucesso('');
 
-    if (!templateSelecionadoOk) {
+    if (!templateSelecionadoFiltro) {
       setErro('Selecione uma etiqueta para imprimir.');
       return;
     }
 
-    if (!prazoValidadeOk) {
+    if (!templateSemOption && !prazoValidadeFiltro) {
       setErro('Informe o prazo de validade para imprimir.');
       return;
     }
 
-    if (!dataFabricacaoOk) {
+    if (!templateSemOption && !dataFabricacaoFiltro) {
       setErro('Informe uma data de fabricação válida no formato dd/mm/aaaa.');
       return;
     }
 
-    if (!quantidadeImpressaoOk) {
+    if (!quantidadeImpressaoFiltro) {
       setErro('Informe uma quantidade válida para imprimir.');
       return;
     }
@@ -688,7 +683,7 @@ function ImprimirExcesso({ onVoltar }) {
       const res = await fetch(`${API_BASE_URL}/api/print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zpl: zplQuantidade })
+        body: JSON.stringify({ zpl: zplQuantidade, host: PRINTER_HOST, port: PRINTER_PORT })
       });
 
       if (!res.ok) {
@@ -746,10 +741,10 @@ function ImprimirExcesso({ onVoltar }) {
                 onVoltar={onVoltar}
                 onImprimir={imprimirEtiqueta}
                 onCancelar={resetarParaEstadoInicial}
-                imprimirDisabled={!prazoValidadeOk || !dataFabricacaoOk || !quantidadeImpressaoOk || imprimindo}
+                imprimirDisabled={(!templateSemOption && (!prazoValidadeFiltro || !dataFabricacaoFiltro)) ||!quantidadeImpressaoFiltro || imprimindo}
               />
 
-              {etiquetas.length > 0 && (
+              {etiquetas.length > 0 && !templateSemOption && (
                 <div className="tabelas-section">
                   <h2>ITENS PARA SUBSTITUIÇÃO:</h2>
                   <FormularioEtiqueta etiquetas={etiquetas} MudarEtiqueta={aoMudarCampo} />

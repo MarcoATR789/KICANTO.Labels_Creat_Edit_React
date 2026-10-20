@@ -43,6 +43,6 @@ export function limparSession() {
   window.localStorage.removeItem(CHAVE_ARMAZENAMENTO);
 }
 
-export function obterTokenAutenticacao() {
+export function obterTokenAuth() {
   return lersession()?.token || '';
 }

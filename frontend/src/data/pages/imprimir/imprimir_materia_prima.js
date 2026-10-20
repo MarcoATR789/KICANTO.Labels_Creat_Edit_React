@@ -1,7 +1,9 @@
 // IMPORTA OS HOOKS NECESSÁRIOS DO REACT E OUTROS MÓDULOS.
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import API_BASE_URL from '../../../config/apiBase';
+import { PRINTER_HOST, PRINTER_PORT } from '../../../config/printer';
 import '../../css/pages.css';
+import FiltroEtiquetaSelect from '../filtro_etiqueta_select.js';
 import baseTemplate from '../../zpl/base_materia_prima.zpl';
 
 // DEFINE A URL BASE DA API, USANDO UMA VARIÁVEL DE AMBIENTE OU UM VALOR PADRÃO.
@@ -271,9 +273,11 @@ const BtnAction = ({
 }) => (
   <>
     <div className="etiquetas-salvas">
-      <button type="button" className="btn-fechar" onClick={onVoltar}>
-        X
-      </button>
+      <div className="button-group btn-fechar">
+        <button type="button" className="btn-cancelar" onClick={onVoltar}>
+          VOLTAR
+        </button>
+      </div>
 
       <div className="filtro-etiquetas">
         <div className="filtro-titulo">FILTRAR NOME</div>
@@ -285,28 +289,11 @@ const BtnAction = ({
               value={filtro}
               onChange={onFiltroChange}
             />
-            <select
-              className="filtro-select"
+            <FiltroEtiquetaSelect
               value={etiquetaSelecionadaId}
-              onChange={(e) => onSelecionarEtiqueta(e.target.value)}
-            >
-              <option value="">Selecionar uma etiqueta</option>
-              {Object.keys(etiquetasAgrupadas).length === 0 && (
-                <option value="" disabled>Nenhuma etiqueta encontrada</option>
-              )}
-
-              {Object.entries(etiquetasAgrupadas)
-                .sort(([a], [b]) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
-                .map(([titulo, itens]) => (
-                  <optgroup key={titulo} label={titulo}>
-                    {itens.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.nome}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-            </select>
+              onChange={onSelecionarEtiqueta}
+              grupos={etiquetasAgrupadas}
+            />
           </div>
         </div>
       </div>
@@ -669,18 +656,18 @@ function ImprimirMateriaPrima({ onVoltar }) {
 
   const prazoValidadeValor = etiquetas.find(e => e.id === 'PRAZO_VALIDADE')?.valor || '';
   const prazoValidadeDias = parseInt(prazoValidadeValor, 10);
-  const dataFabricacaoOk = Boolean(obterDataFabricacaoDaLista(etiquetas));
+  const dataFabricacaoFiltro = Boolean(obterDataFabricacaoDaLista(etiquetas));
   const pesoValor = (etiquetas.find(e => e.id === 'VARIAVEL_ID_2')?.valor || '').toString().trim();
   const pesoOk = /^(\d{1,3})(Kg|g)$/.test(pesoValor);
-  const prazoValidadeOk = Number.isInteger(prazoValidadeDias) && prazoValidadeDias > 0 && Boolean(etiquetaSelecionadaId);
+  const prazoValidadeFiltro = Number.isInteger(prazoValidadeDias) && prazoValidadeDias > 0 && Boolean(etiquetaSelecionadaId);
   const quantidadeImpressaoNumero = Number.parseInt(quantidadeImpressao, 10);
-  const quantidadeImpressaoOk = Number.isInteger(quantidadeImpressaoNumero) && quantidadeImpressaoNumero > 0 && quantidadeImpressaoNumero <= 999;
+  const quantidadeImpressaoFiltro = Number.isInteger(quantidadeImpressaoNumero) && quantidadeImpressaoNumero > 0 && quantidadeImpressaoNumero <= 999;
 
   const imprimirEtiqueta = async () => {
     setErro('');
     setSucesso('');
 
-    if (!prazoValidadeOk) {
+    if (!prazoValidadeFiltro) {
       setErro('Informe o prazo de validade para imprimir.');
       return;
     }
@@ -690,12 +677,12 @@ function ImprimirMateriaPrima({ onVoltar }) {
       return;
     }
 
-    if (!dataFabricacaoOk) {
+    if (!dataFabricacaoFiltro) {
       setErro('Informe uma data de fabricação válida no formato dd/mm/aaaa.');
       return;
     }
 
-    if (!quantidadeImpressaoOk) {
+    if (!quantidadeImpressaoFiltro) {
       setErro('Informe uma quantidade válida para imprimir.');
       return;
     }
@@ -718,7 +705,7 @@ function ImprimirMateriaPrima({ onVoltar }) {
       const res = await fetch(`${API_BASE_URL}/api/print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zpl: zplQuantidade })
+        body: JSON.stringify({ zpl: zplQuantidade, host: PRINTER_HOST, port: PRINTER_PORT })
       });
 
       if (!res.ok) {
@@ -805,7 +792,7 @@ function ImprimirMateriaPrima({ onVoltar }) {
                 onVoltar={onVoltar}
                 onImprimir={imprimirEtiqueta}
                 onCancelar={resetarParaEstadoInicial}
-                imprimirDisabled={!prazoValidadeOk || !pesoOk || !dataFabricacaoOk || !quantidadeImpressaoOk || imprimindo}
+                imprimirDisabled={!prazoValidadeFiltro || !pesoOk || !dataFabricacaoFiltro || !quantidadeImpressaoFiltro || imprimindo}
               />
 
               {etiquetaSelecionadaId && (

@@ -2,7 +2,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import API_BASE_URL from '../../../config/apiBase';
 import '../../css/pages.css';
+import FiltroEtiquetaSelect from '../filtro_etiqueta_select.js';
+import { substituirVariaveisComposicao } from '../formatar_itens_composicao.js';
 import baseTemplate from '../../zpl/base_etiqueta_composicao.zpl';
+import { aplicarGarantiasPadrao, isCampoGarantia } from './niveis_garantia_config.js';
 
 // OCULTA PESQUISA DE MATERIA PRIMA.
 const TITULO_OCULTO_NESTA_TELA = 'MATÉRIA PRIMA';
@@ -148,7 +151,7 @@ const FormularioEtiqueta = ({ etiquetas, MudarEtiqueta }) => (
       </thead>
       <tbody className="label-nomes">
         {etiquetas
-          .filter(etiqueta => !['VARIAVEL_DATA', 'PRAZO_VALIDADE', 'VARIAVEL_VALIDADE', 'VARIAVEL_LOTE', 'VARIAVEL_BARRAS'].includes(etiqueta.id))
+          .filter(etiqueta => !['VARIAVEL_DATA', 'PRAZO_VALIDADE', 'VARIAVEL_VALIDADE', 'VARIAVEL_LOTE', 'VARIAVEL_BARRAS'].includes(etiqueta.id) && !isCampoGarantia(etiqueta.id))
           .map(etiqueta => (
             <tr key={etiqueta.id}>
               <td>{LABEL_NAMES[etiqueta.id] || etiqueta.nome}</td>
@@ -227,9 +230,11 @@ const BtnAction = ({
 }) => (
   <>
     <div className="etiquetas-salvas">
-      <button type="button" className="btn-fechar" onClick={onVoltar}>
-        X
-      </button>
+      <div className="button-group btn-fechar">
+        <button type="button" className="btn-cancelar" onClick={onVoltar}>
+          VOLTAR
+        </button>
+      </div>
 
       <div className="filtro-etiquetas">
         <div className="filtro-titulo">FILTRAR TÍTULO / CÓDIGO</div>
@@ -241,28 +246,12 @@ const BtnAction = ({
               value={filtro}
               onChange={onFiltroChange}
             />
-            <select
-              className="filtro-select"
+            <FiltroEtiquetaSelect
               value={etiquetaSelecionadaId}
-              onChange={(e) => onSelecionarEtiqueta(e.target.value)}
-            >
-              <option value="">Selecionar uma etiqueta</option>
-              {Object.keys(etiquetasAgrupadas).length === 0 && (
-                <option value="" disabled>Nenhuma etiqueta encontrada</option>
-              )}
-
-              {Object.entries(etiquetasAgrupadas)
-                .sort(([a], [b]) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
-                .map(([titulo, itens]) => (
-                  <optgroup key={titulo} label={titulo}>
-                    {itens.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.nome} / {obterPesoDaEtiqueta(item)}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-            </select>
+              onChange={onSelecionarEtiqueta}
+              grupos={etiquetasAgrupadas}
+              getOptionLabel={(item) => `${item.nome} / ${obterPesoDaEtiqueta(item)}`}
+            />
           </div>
         </div>
       </div>
@@ -376,8 +365,10 @@ function EditarEtiqueta({ onVoltar }) {
     }
 
     // NÃO SALVA VARIAVEL_BARRAS NO B.D
-    const etiquetasParaSalvar = etiquetas.filter(e =>
-      !['VARIAVEL_DATA', 'PRAZO_VALIDADE', 'VARIAVEL_BARRAS'].includes(e.id)
+    const etiquetasParaSalvar = aplicarGarantiasPadrao(
+      etiquetas.filter(e =>
+        !['VARIAVEL_DATA', 'PRAZO_VALIDADE', 'VARIAVEL_BARRAS'].includes(e.id)
+      )
     );
 
     // ENDPOINT POST (CRIAR) OU PUT (EDITAR)
@@ -433,7 +424,7 @@ function EditarEtiqueta({ onVoltar }) {
       { id: 'VARIAVEL_BARRAS', nome: 'VARIAVEL_BARRAS', valor: '' },
     ];
 
-    setEtiquetas(etiquetasBase);
+    setEtiquetas(aplicarGarantiasPadrao(etiquetasBase));
 
     // RETORNA SELEÇÃO PARA "Selecionar uma etiqueta"
     setEtiquetaSelecionadaId('');
@@ -458,7 +449,9 @@ function EditarEtiqueta({ onVoltar }) {
         ? JSON.parse(data.dados)
         : data.dados;
 
-    const etiquetasSemData = etiquetasCarregadas.filter(e => e.id !== 'VARIAVEL_DATA');
+    const etiquetasSemData = aplicarGarantiasPadrao(
+      etiquetasCarregadas.filter(e => e.id !== 'VARIAVEL_DATA')
+    );
     const codigo3 = etiquetasCarregadas.find(e => e.id === 'VARIAVEL_CODIGO')?.valor || '';
     const barras = gerarBarrasEan8(codigo3);
 
@@ -539,7 +532,7 @@ function EditarEtiqueta({ onVoltar }) {
 
         const etiquetasExtraidas = extrairVariaveis(conteudo);
 
-        setEtiquetas([
+        const etiquetasBase = [
           {
             id: 'VARIAVEL_CODIGO',
             nome: 'VARIAVEL_CODIGO',
@@ -550,7 +543,9 @@ function EditarEtiqueta({ onVoltar }) {
           { id: 'PRAZO_VALIDADE', nome: 'PRAZO_VALIDADE', valor: '' },
           { id: 'VARIAVEL_LOTE', nome: 'VARIAVEL_LOTE', valor: '' },
           { id: 'VARIAVEL_BARRAS', nome: 'VARIAVEL_BARRAS', valor: '' }
-        ]);
+        ];
+
+        setEtiquetas(aplicarGarantiasPadrao(etiquetasBase));
       } catch (erro_) {
         setErro('ERRO AO CARREGAR O ARQUIVO DE TEMPLATE.');
         console.error(erro_);
@@ -563,10 +558,7 @@ function EditarEtiqueta({ onVoltar }) {
   // SUBSTITUIR VARIÁVEIS PELOS VALORES DO USUÁRIO.
   const obterConteudoProcessado = useCallback(() => {
     const conteudoSemData = conteudoArquivo.replaceAll('{VARIAVEL_DATA}', '');
-    return etiquetas.reduce((acc, etiqueta) =>
-      acc.replaceAll(`{${etiqueta.nome}}`, etiqueta.valor),
-      conteudoSemData
-    );
+    return substituirVariaveisComposicao(conteudoSemData, etiquetas);
   }, [etiquetas, conteudoArquivo]);
 
   // ATUALIZAR PRÉ-VISUALIZAÇÃO DA ETIQUETA CONFORME DIGITAÇÃO.

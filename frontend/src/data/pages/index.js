@@ -1,9 +1,11 @@
-import EditarEtiqueta from './etiquetas/editar_etiqueta.js';
-import EditarMateriaPrima from './etiquetas/editar_materia_prima.js';
+import EditarEtiqueta from './editar/editar_etiqueta.js';
+import EditarMateriaPrima from './editar/editar_materia_prima.js';
+import EditarNiveisGarantia from './editar/editar_niveis_garantia.js';
 import ImprimirLote from './imprimir/imprimir_composicao.js';
 import ImprimirColunas from './imprimir/imprimir_colunas.js';
 import ImprimirMateriaPrima from './imprimir/imprimir_materia_prima.js';
 import ImprimirExcesso from './imprimir/imprimir_excesso.js';
+import ImprimirCaixa from './imprimir/imprimir_caixa.js';
 
 const abas = [
   {
@@ -17,6 +19,12 @@ const abas = [
     nome: 'EDITAR / CRIAR\nMATÉRIA PRIMA',
     descricao: 'Criar e Manipular Matéria Prima.',
     componente: EditarMateriaPrima
+  },
+  {
+    id: 'editar-niveis-garantia',
+    nome: 'EDITAR NÍVEIS\nGARANTIA',
+    descricao: 'Manipular Garantia Etiquetas.',
+    componente: EditarNiveisGarantia
   },
   {
     id: 'imprimir-lote',
@@ -35,6 +43,12 @@ const abas = [
     nome: 'IMPRIMIR COLUNAS\n4X1',
     descricao: 'Impressão com 4 Colunas sem Lote.',
     componente: ImprimirColunas
+  },
+  {
+    id: 'imprimir-caixa',
+    nome: 'IMPRIMIR CAIXA',
+    descricao: 'Impressão de Caixa.',
+    componente: ImprimirCaixa
   },
   {
     id: 'etiquetas-excesso',

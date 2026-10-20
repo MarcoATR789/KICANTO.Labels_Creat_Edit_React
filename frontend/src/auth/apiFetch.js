@@ -1,4 +1,4 @@
-import { limparSession, obterTokenAutenticacao } from './session';
+import { limparSession, obterTokenAuth } from './session';
 
 function obterUrlrequest(entrada) {
   if (typeof entrada === 'string') {
@@ -13,7 +13,7 @@ function obterUrlrequest(entrada) {
   return '';
 }
 
-function ehrequestApi(entrada) {
+function requestApi(entrada) {
   const urlrequest = obterUrlrequest(entrada);
   if (!urlrequest) {
     return false;
@@ -39,38 +39,38 @@ function ehrequestLogin(entrada) {
 }
 
 export function instalarFetch() {
-  if (typeof window === 'undefined' || window.__kicantoBuscaAutenticadaInstalada) {
+  if (typeof window === 'undefined' || window.AuthBuscaInstall) {
     return;
   }
 
   const fetchNativo = window.fetch.bind(window);
 
-  window.fetch = async (entrada, inicializacao = undefined) => {
-    const deveAnexarAutenticacao = ehrequestApi(entrada);
-    const proximaInicializacao = inicializacao ? { ...inicializacao } : {};
+  window.fetch = async (entrada, start = undefined) => {
+    const AnexarAuth = requestApi(entrada);
+    const proximoStart = start ? { ...start } : {};
 
-    if (deveAnexarAutenticacao) {
-      const cabecalhos = new Headers(proximaInicializacao.headers || {});
-      const token = obterTokenAutenticacao();
+    if (AnexarAuth) {
+      const cabecalhos = new Headers(proximoStart.headers || {});
+      const token = obterTokenAuth();
       if (token) {
         cabecalhos.set('Authorization', `Bearer ${token}`);
       }
-      proximaInicializacao.headers = cabecalhos;
+      proximoStart.headers = cabecalhos;
     }
 
-    const resposta = await fetchNativo(entrada, proximaInicializacao);
+    const resposta = await fetchNativo(entrada, proximoStart);
 
     if (
-      deveAnexarAutenticacao &&
+      AnexarAuth &&
       resposta.status === 401 &&
       !ehrequestLogin(entrada)
     ) {
       limparSession();
-      window.dispatchEvent(new CustomEvent('auth:nao-autorizado'));
+      window.dispatchEvent(new CustomEvent('auth:não-autorizado'));
     }
 
     return resposta;
   };
 
-  window.__kicantoBuscaAutenticadaInstalada = true;
+  window.AuthBuscaInstall = true;
 }

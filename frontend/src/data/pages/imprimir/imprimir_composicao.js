@@ -1,8 +1,12 @@
 // IMPORTA OS HOOKS NECESSÁRIOS DO REACT E OUTROS MÓDULOS.
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import API_BASE_URL from '../../../config/apiBase';
+import { PRINTER_HOST, PRINTER_PORT } from '../../../config/printer';
 import '../../css/pages.css';
+import FiltroEtiquetaSelect from '../filtro_etiqueta_select.js';
+import { substituirVariaveisComposicao } from '../formatar_itens_composicao.js';
 import baseTemplate from '../../zpl/base_etiqueta_composicao.zpl';
+import { aplicarGarantiasPadrao } from '../editar/niveis_garantia_config.js';
 
 // DEFINE A URL BASE DA API, USANDO UMA VARIÁVEL DE AMBIENTE OU UM VALOR PADRÃO.
 const TITULO_OCULTO_NESTA_TELA = 'MATÉRIA PRIMA';
@@ -262,9 +266,11 @@ const BtnAction = ({
 }) => (
   <>
     <div className="etiquetas-salvas">
-      <button type="button" className="btn-fechar" onClick={onVoltar}>
-        X
-      </button>
+      <div className="button-group btn-fechar">
+        <button type="button" className="btn-cancelar" onClick={onVoltar}>
+          VOLTAR
+        </button>
+      </div>
 
       <div className="filtro-etiquetas">
         <div className="filtro-titulo">FILTRAR TÍTULO / CÓDIGO</div>
@@ -276,35 +282,18 @@ const BtnAction = ({
               value={filtro}
               onChange={onFiltroChange}
             />
-            <select
-              className="filtro-select"
+            <FiltroEtiquetaSelect
               value={etiquetaSelecionadaId}
-              onChange={(e) => onSelecionarEtiqueta(e.target.value)}
-            >
-              <option value="">Selecionar uma etiqueta</option>
-              {Object.keys(etiquetasAgrupadas).length === 0 && (
-                <option value="" disabled>Nenhuma etiqueta encontrada</option>
-              )}
-
-              {Object.entries(etiquetasAgrupadas)
-                .sort(([a], [b]) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
-                .map(([titulo, itens]) => (
-                  <optgroup key={titulo} label={titulo}>
-                    {itens.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.nome} / {obterPesoDaEtiqueta(item)}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-            </select>
+              onChange={onSelecionarEtiqueta}
+              grupos={etiquetasAgrupadas}
+              getOptionLabel={(item) => `${item.nome} / ${obterPesoDaEtiqueta(item)}`}
+            />
           </div>
         </div>
       </div>
     </div>
 
     <div className="button-group">
-
       <button className="btn-limpar" onClick={limparDados}>
         LIMPAR DADOS
       </button>
@@ -421,7 +410,7 @@ function ImprimirLote({ onVoltar }) {
     setSucesso('');
     setImprimindo(false);
     setQuantidadeImpressao(1);
-    setEtiquetas(etiquetasBase);
+    setEtiquetas(aplicarGarantiasPadrao(etiquetasBase));
     setImagemPreview('');
   }, [conteudoArquivo, extrairVariaveis]);
 
@@ -437,7 +426,7 @@ function ImprimirLote({ onVoltar }) {
 
     const hojeStr = formatarDataBR(new Date());
 
-    let completas = [...etiquetasCarregadas];
+    let completas = aplicarGarantiasPadrao([...etiquetasCarregadas]);
 
     // garante campos fixos no state
     completas = upsert(completas, { id: 'VARIAVEL_DATA', nome: 'VARIAVEL_DATA', valor: hojeStr });
@@ -508,7 +497,7 @@ function ImprimirLote({ onVoltar }) {
 
         const etiquetasExtraidas = extrairVariaveis(conteudo);
 
-        setEtiquetas([
+        const etiquetasBase = [
           { id: 'VARIAVEL_CODIGO', nome: 'VARIAVEL_CODIGO', valor: '' },
 
           ...etiquetasExtraidas
@@ -524,7 +513,9 @@ function ImprimirLote({ onVoltar }) {
           { id: 'VARIAVEL_VALIDADE', nome: 'VARIAVEL_VALIDADE', valor: '' },
           { id: 'VARIAVEL_LOTE', nome: 'VARIAVEL_LOTE', valor: '' },
           { id: 'VARIAVEL_BARRAS', nome: 'VARIAVEL_BARRAS', valor: '' },
-        ]);
+        ];
+
+        setEtiquetas(aplicarGarantiasPadrao(etiquetasBase));
       } catch (erro_) {
         setErro('ERRO AO CARREGAR O ARQUIVO DE TEMPLATE.');
         console.error(erro_);
@@ -536,10 +527,7 @@ function ImprimirLote({ onVoltar }) {
 
   // FUNÇÃO MEMORIZADA PARA PROCESSAR O CONTEÚDO, SUBSTITUINDO AS VARIÁVEIS PELOS VALORES DO USUÁRIO.
   const obterConteudoProcessado = useCallback(() => {
-    return etiquetas.reduce((acc, etiqueta) =>
-      acc.replaceAll(`{${etiqueta.nome}}`, etiqueta.valor),
-      conteudoArquivo
-    );
+    return substituirVariaveisComposicao(conteudoArquivo, aplicarGarantiasPadrao(etiquetas));
   }, [etiquetas, conteudoArquivo]);
 
   // EFEITO PARA ATUALIZAR A PRÉ-VISUALIZAÇÃO DA ETIQUETA QUANDO OS DADOS MUDAM.
@@ -662,10 +650,10 @@ function ImprimirLote({ onVoltar }) {
 
   const prazoValidadeValor = etiquetas.find(e => e.id === 'PRAZO_VALIDADE')?.valor || '';
   const prazoValidadeDias = parseInt(prazoValidadeValor, 10);
-  const dataFabricacaoOk = Boolean(obterDataFabricacaoDaLista(etiquetas));
-  const prazoValidadeOk = Number.isInteger(prazoValidadeDias) && prazoValidadeDias > 0 && etiquetaSelecionadaId;
+  const dataFabricacaoFiltro = Boolean(obterDataFabricacaoDaLista(etiquetas));
+  const prazoValidadeFiltro = Number.isInteger(prazoValidadeDias) && prazoValidadeDias > 0 && etiquetaSelecionadaId;
   const quantidadeImpressaoNumero = Number.parseInt(quantidadeImpressao, 10);
-  const quantidadeImpressaoOk = Number.isInteger(quantidadeImpressaoNumero) && quantidadeImpressaoNumero > 0 && quantidadeImpressaoNumero <= 999;
+  const quantidadeImpressaoFiltro = Number.isInteger(quantidadeImpressaoNumero) && quantidadeImpressaoNumero > 0 && quantidadeImpressaoNumero <= 999;
 
   // OCULTAR ETIQUETAS COM NOME MATÉRIAL PRIMA
   const etiquetasFiltradas = useMemo(() => {
@@ -690,17 +678,17 @@ function ImprimirLote({ onVoltar }) {
     setErro('');
     setSucesso('');
 
-    if (!prazoValidadeOk) {
+    if (!prazoValidadeFiltro) {
       setErro('Informe o prazo de validade para imprimir.');
       return;
     }
 
-    if (!dataFabricacaoOk) {
+    if (!dataFabricacaoFiltro) {
       setErro('Informe uma data de fabricação válida no formato dd/mm/aaaa.');
       return;
     }
 
-    if (!quantidadeImpressaoOk) {
+    if (!quantidadeImpressaoFiltro) {
       setErro('Informe uma quantidade válida para imprimir.');
       return;
     }
@@ -723,7 +711,7 @@ function ImprimirLote({ onVoltar }) {
       const res = await fetch(`${API_BASE_URL}/api/print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zpl: zplQuantidade })
+        body: JSON.stringify({ zpl: zplQuantidade, host: PRINTER_HOST, port: PRINTER_PORT })
       });
 
       if (!res.ok) {
@@ -791,7 +779,7 @@ function ImprimirLote({ onVoltar }) {
                 onVoltar={onVoltar}
                 onImprimir={imprimirEtiqueta}
                 onCancelar={resetarParaEstadoInicial}
-                imprimirDisabled={!prazoValidadeOk || !dataFabricacaoOk || !quantidadeImpressaoOk || imprimindo}
+                imprimirDisabled={!prazoValidadeFiltro || !dataFabricacaoFiltro || !quantidadeImpressaoFiltro || imprimindo}
               />
 
               {etiquetaSelecionadaId && (

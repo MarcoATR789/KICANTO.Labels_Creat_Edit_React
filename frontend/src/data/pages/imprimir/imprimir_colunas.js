@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import API_BASE_URL from '../../../config/apiBase';
+import { PRINTER_HOST, PRINTER_PORT } from '../../../config/printer';
 import '../../css/pages.css';
+import FiltroEtiquetaSelect from '../filtro_etiqueta_select.js';
 import baseTemplate from '../../zpl/base_etiqueta_colunas.zpl';
 
 const TITULO_OCULTO_NESTA_TELA = 'MATÉRIA PRIMA';
@@ -154,9 +156,11 @@ const BtnAction = ({
 }) => (
   <>
     <div className="etiquetas-salvas">
-      <button type="button" className="btn-fechar" onClick={onVoltar}>
-        X
-      </button>
+      <div className="button-group btn-fechar">
+        <button type="button" className="btn-cancelar" onClick={onVoltar}>
+          VOLTAR
+        </button>
+      </div>
 
       <div className="filtro-etiquetas">
         <div className="filtro-titulo">FILTRAR TÍTULO / CÓDIGO</div>
@@ -168,28 +172,13 @@ const BtnAction = ({
               value={filtro}
               onChange={onFiltroChange}
             />
-            <select
-              className="filtro-select"
+            <FiltroEtiquetaSelect
               value={etiquetaSelecionadaId}
-              onChange={(e) => onSelecionarEtiqueta(e.target.value)}
-            >
-              <option value="">Selecionar uma etiqueta</option>
-              {Object.keys(etiquetasAgrupadas).length === 0 && (
-                <option value="" disabled>Nenhuma etiqueta encontrada</option>
-              )}
-
-              {Object.entries(etiquetasAgrupadas)
-                .sort(([a], [b]) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
-                .map(([titulo, itens]) => (
-                  <optgroup key={titulo} label={titulo}>
-                    {itens.map(item => (
-                      <option key={item.idOpcao} value={item.idOpcao}>
-                        {item.quantidadeOpcao} / {item.nomeOpcao} / {obterPesoDaEtiqueta(item)}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-            </select>
+              onChange={onSelecionarEtiqueta}
+              grupos={etiquetasAgrupadas}
+              getOptionValue={(item) => item.idOpcao}
+              getOptionLabel={(item) => `${item.quantidadeOpcao} / ${item.nomeOpcao} / ${obterPesoDaEtiqueta(item)}`}
+            />
           </div>
         </div>
       </div>
@@ -456,7 +445,7 @@ function ImprimirColunas({ onVoltar }) {
 
   const etiquetaSelecionadaOk = Boolean(etiquetaSelecionadaId);
   const quantidadeImpressaoNumero = Number.parseInt(quantidadeImpressao, 10);
-  const quantidadeImpressaoOk = Number.isInteger(quantidadeImpressaoNumero) && quantidadeImpressaoNumero > 0 && quantidadeImpressaoNumero <= 999;
+  const quantidadeImpressaoFiltro = Number.isInteger(quantidadeImpressaoNumero) && quantidadeImpressaoNumero > 0 && quantidadeImpressaoNumero <= 999;
 
   // OCULTAR ETIQUETAS DE MATÉRIA PRIMA E PESO ACIMA DE 500g
   const etiquetasBase = useMemo(() => {
@@ -512,7 +501,7 @@ function ImprimirColunas({ onVoltar }) {
       return;
     }
 
-    if (!quantidadeImpressaoOk) {
+    if (!quantidadeImpressaoFiltro) {
       setErro('Informe uma quantidade válida para imprimir.');
       return;
     }
@@ -535,7 +524,7 @@ function ImprimirColunas({ onVoltar }) {
       const res = await fetch(`${API_BASE_URL}/api/print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zpl: zplQuantidade })
+        body: JSON.stringify({ zpl: zplQuantidade, host: PRINTER_HOST, port: PRINTER_PORT })
       });
 
       if (!res.ok) {
@@ -561,7 +550,7 @@ function ImprimirColunas({ onVoltar }) {
     }
   };
 
-  /// AGRUPA AS ETIQUETAS
+  // AGRUPA AS ETIQUETAS
   const etiquetasAgrupadas = useMemo(() => {
     const grupos = {};
     opcoesEtiquetas.forEach(item => {
@@ -602,7 +591,7 @@ function ImprimirColunas({ onVoltar }) {
                 onVoltar={onVoltar}
                 onImprimir={imprimirEtiqueta}
                 onCancelar={resetarParaEstadoInicial}
-                imprimirDisabled={!etiquetaSelecionadaOk || !quantidadeImpressaoOk || imprimindo}
+                imprimirDisabled={!etiquetaSelecionadaOk || !quantidadeImpressaoFiltro || imprimindo}
               />
             </>
           )}

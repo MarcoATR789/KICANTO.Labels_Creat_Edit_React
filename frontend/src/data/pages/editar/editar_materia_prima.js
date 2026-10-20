@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import API_BASE_URL from '../../../config/apiBase';
 import '../../css/pages.css';
+import FiltroEtiquetaSelect from '../filtro_etiqueta_select.js';
 import baseTemplate from '../../zpl/base_materia_prima.zpl';
 
 // DEFINE A URL BASE DA API, USANDO UMA VARIÁVEL DE AMBIENTE OU UM VALOR PADRÃO.
@@ -127,9 +128,11 @@ const BtnAction = ({
 }) => (
   <>
     <div className="etiquetas-salvas">
-      <button type="button" className="btn-fechar" onClick={onVoltar}>
-        X
-      </button>
+      <div className="button-group btn-fechar">
+        <button type="button" className="btn-cancelar" onClick={onVoltar}>
+          VOLTAR
+        </button>
+      </div>
 
       <div className="filtro-etiquetas">
         <div className="filtro-titulo">FILTRAR NOME</div>
@@ -141,28 +144,11 @@ const BtnAction = ({
               value={filtro}
               onChange={onFiltroChange}
             />
-            <select
-              className="filtro-select"
+            <FiltroEtiquetaSelect
               value={etiquetaSelecionadaId}
-              onChange={(e) => onSelecionarEtiqueta(e.target.value)}
-            >
-              <option value="">Selecionar uma etiqueta</option>
-              {Object.keys(etiquetasAgrupadas).length === 0 && (
-                <option value="" disabled>Nenhuma etiqueta encontrada</option>
-              )}
-
-              {Object.entries(etiquetasAgrupadas)
-                .sort(([a], [b]) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
-                .map(([titulo, itens]) => (
-                  <optgroup key={titulo} label={titulo}>
-                    {itens.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.nome}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-            </select>
+              onChange={onSelecionarEtiqueta}
+              grupos={etiquetasAgrupadas}
+            />
           </div>
         </div>
       </div>
