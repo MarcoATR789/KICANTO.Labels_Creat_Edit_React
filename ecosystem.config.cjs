@@ -10,7 +10,9 @@ module.exports = {
       autorestart: true,
       watch: false,
       env: {
-        PORT: 3001
+        PORT: 3001,
+        PRINTER_HOST: '192.168.1.124',
+        PRINTER_PORT: 9100
       }
     },
     {
