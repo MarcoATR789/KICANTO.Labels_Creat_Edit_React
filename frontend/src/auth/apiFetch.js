@@ -1,4 +1,4 @@
-import { limparSession, obterTokenAuth } from './session';
+import { EVENTO_NAO_AUTORIZADO, limparSession, obterTokenAuth } from './session';
 
 function obterUrlrequest(entrada) {
   if (typeof entrada === 'string') {
@@ -48,10 +48,10 @@ export function instalarFetch() {
   window.fetch = async (entrada, start = undefined) => {
     const AnexarAuth = requestApi(entrada);
     const proximoStart = start ? { ...start } : {};
+    const token = AnexarAuth ? obterTokenAuth() : '';
 
     if (AnexarAuth) {
       const cabecalhos = new Headers(proximoStart.headers || {});
-      const token = obterTokenAuth();
       if (token) {
         cabecalhos.set('Authorization', `Bearer ${token}`);
       }
@@ -63,10 +63,11 @@ export function instalarFetch() {
     if (
       AnexarAuth &&
       resposta.status === 401 &&
-      !ehrequestLogin(entrada)
+      !ehrequestLogin(entrada) &&
+      token === obterTokenAuth()
     ) {
       limparSession();
-      window.dispatchEvent(new CustomEvent('auth:não-autorizado'));
+      window.dispatchEvent(new CustomEvent(EVENTO_NAO_AUTORIZADO));
     }
 
     return resposta;

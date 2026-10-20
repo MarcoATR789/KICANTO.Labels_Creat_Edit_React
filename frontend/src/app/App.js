@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { instalarFetch } from '../auth/apiFetch';
-import { lersession, limparSession, salvarsession } from '../auth/session';
+import { EVENTO_NAO_AUTORIZADO, lersession, limparSession, salvarsession } from '../auth/session';
 import API_BASE_URL from '../config/apiBase';
 import abas from '../data/pages/index.js';
 import './App.css';
@@ -9,7 +9,8 @@ instalarFetch();
 
 function App() {
   const [programaAtivo, setProgramaAtivo] = useState(null);
-  const [session, setSession] = useState(() => lersession());
+  const [session, setSession] = useState(null);
+  const [validandoSession, setValidandoSession] = useState(() => Boolean(lersession()));
   const [usuario, setUsuario] = useState('');
   const [senha, setSenha] = useState('');
   const [loginErro, setLoginErro] = useState('');
@@ -21,23 +22,66 @@ function App() {
   const [confirmarNovaSenha, setConfirmarNovaSenha] = useState('');
   const [trocandoSenha, setTrocandoSenha] = useState(false);
 
-  useEffect(() => {
-    const aoNaoAutorizado = () => {
-      limparSession();
-      setSession(null);
-      setProgramaAtivo(null);
-      setSenha('');
-      setNovaSenha('');
-      setConfirmarNovaSenha('');
-      setMostrarTrocaSenha(false);
-      setLoginErro('Sessão expirada. Faça login novamente.');
-    };
-
-    window.addEventListener('auth:nao-autorizado', aoNaoAutorizado);
-    return () => {
-      window.removeEventListener('auth:nao-autorizado', aoNaoAutorizado);
-    };
+  const encerrarSession = useCallback((mensagem = '') => {
+    limparSession();
+    setSession(null);
+    setValidandoSession(false);
+    setProgramaAtivo(null);
+    setSenha('');
+    setNovaSenha('');
+    setConfirmarNovaSenha('');
+    setMostrarTrocaSenha(false);
+    setMenuAberto(false);
+    setLoginSucesso('');
+    setLoginErro(mensagem);
   }, []);
+
+  const validarSession = useCallback(async () => {
+    const sessionSalva = lersession();
+    if (!sessionSalva) {
+      encerrarSession();
+      return false;
+    }
+
+    setValidandoSession(true);
+
+    try {
+      const resposta = await fetch(`${API_BASE_URL}/api/auth/me`, {
+        cache: 'no-store'
+      });
+      if (!resposta.ok) throw new Error('Falha ao validar sessão.');
+
+      const dados = await resposta.json();
+      // Ignora a resposta se a sessão foi encerrada durante a consulta.
+      if (lersession()?.token !== sessionSalva.token) return false;
+      if (!dados.usuario?.id || !dados.usuario?.usuario) {
+        throw new Error('Sessão inválida.');
+      }
+
+      setSession({ token: sessionSalva.token, usuario: dados.usuario });
+      return true;
+    } catch (erro) {
+      if (lersession()?.token === sessionSalva.token) {
+        encerrarSession('Não foi possível validar sua sessão. Faça login novamente.');
+      }
+      return false;
+    } finally {
+      setValidandoSession(false);
+    }
+  }, [encerrarSession]);
+
+  useEffect(() => {
+    const aoNaoAutorizado = () => encerrarSession('Sessão expirada. Faça login novamente.');
+    window.addEventListener(EVENTO_NAO_AUTORIZADO, aoNaoAutorizado);
+    validarSession();
+    return () => {
+      window.removeEventListener(EVENTO_NAO_AUTORIZADO, aoNaoAutorizado);
+    };
+  }, [encerrarSession, validarSession]);
+
+  const abrirPrograma = async (programa) => {
+    if (await validarSession()) setProgramaAtivo(programa);
+  };
 
   useEffect(() => {
     if (!loginErro) return undefined;
@@ -106,6 +150,11 @@ function App() {
         return;
       }
 
+      if (typeof dados.token !== 'string' || !dados.token || !dados.usuario?.id || !dados.usuario?.usuario) {
+        setLoginErro('Resposta inválida ao validar login.');
+        return;
+      }
+
       const novasession = { token: dados.token, usuario: dados.usuario };
       salvarsession(novasession);
       setLoginSucesso('Bem vindo!');
@@ -127,16 +176,8 @@ function App() {
     } catch (erro) {
 
     } finally {
-      limparSession();
-      setSession(null);
-      setProgramaAtivo(null);
+      encerrarSession();
       setUsuario('');
-      setSenha('');
-      setLoginErro('');
-      setLoginSucesso('');
-      setNovaSenha('');
-      setConfirmarNovaSenha('');
-      setMostrarTrocaSenha(false);
     }
   };
 
@@ -181,6 +222,17 @@ function App() {
       setTrocandoSenha(false);
     }
   };
+
+  if (validandoSession) {
+    return (
+      <div className="App">
+        <header className="App-header">
+          <h1>KICANTO</h1>
+          <p role="status">Validando sessão...</p>
+        </header>
+      </div>
+    );
+  }
 
   if (!session) {
     return (
@@ -252,7 +304,7 @@ function App() {
         </header>
 
         <main>
-          <ComponenteAtivo onVoltar={() => setProgramaAtivo(null)} />
+          <ComponenteAtivo onVoltar={() => abrirPrograma(null)} />
         </main>
       </div>
     );
@@ -307,7 +359,7 @@ function App() {
           <div
             key={aba.id}
             className="programa-card"
-            onClick={() => setProgramaAtivo(aba)}
+            onClick={() => abrirPrograma(aba)}
           >
             <h2>{aba.nome}</h2>
             <p>{aba.descricao}</p>

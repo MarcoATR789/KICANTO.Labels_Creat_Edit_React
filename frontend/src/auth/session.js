@@ -1,4 +1,5 @@
 const CHAVE_ARMAZENAMENTO = 'kicanto_auth_session_v1';
+export const EVENTO_NAO_AUTORIZADO = 'auth:nao-autorizado';
 
 function normalizarsession(sessionBruta) {
   if (!sessionBruta || typeof sessionBruta !== 'object') {

@@ -6,6 +6,7 @@ import ImprimirColunas from './imprimir/imprimir_colunas.js';
 import ImprimirMateriaPrima from './imprimir/imprimir_materia_prima.js';
 import ImprimirExcesso from './imprimir/imprimir_excesso.js';
 import ImprimirCaixa from './imprimir/imprimir_caixa.js';
+import ImprimirExpositor from './imprimir/imprimir_expositor.js';
 
 const abas = [
   {
@@ -51,12 +52,17 @@ const abas = [
     componente: ImprimirCaixa
   },
   {
+    id: 'imprimir-expositor',
+    nome: 'IMPRIMIR EXPOSITOR',
+    descricao: 'Impressão de Expositor.',
+    componente: ImprimirExpositor
+  },
+  {
     id: 'etiquetas-excesso',
     nome: 'EXCESSO DE ETIQUETAS',
     descricao: 'Excesso de etiquetas com Lote.',
     componente: ImprimirExcesso
   }
 ];
-
 
 export default abas;

@@ -1,13 +1,9 @@
 // IMPORTA OS HOOKS NECESSÁRIOS DO REACT E OUTROS MÓDULOS.
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import API_BASE_URL from '../../../config/apiBase';
 import { PRINTER_HOST, PRINTER_PORT } from '../../../config/printer';
 import '../../css/pages.css';
-import FiltroEtiquetaSelect from '../filtro_etiqueta_select.js';
 import baseTemplate from '../../zpl/base_etiqueta_caixa.zpl';
-
-// TITULO OCULTO.
-const TITULO_OCULTO_NESTA_TELA = 'MATÉRIA PRIMA';
 
 // MAPEIA OS NOMES INTERNOS DAS VARIÁVEIS PARA NOMES AMIGÁVEIS EXIBIDOS NA INTERFACE.
 const LABEL_NAMES = {
@@ -21,7 +17,7 @@ const LABEL_NAMES = {
 const LABELARY_API_CONFIG = {
   DPI: '8dpmm',
   LARGURA: '3.9',
-  ALTURA: '1.73',
+  ALTURA: '1.6',
   INDICE: '0',
 };
 
@@ -114,48 +110,6 @@ const recalcularCamposCalculados = (listaEtiquetas) => {
   });
 };
 
-// OBTER UM CAMPO (VARIAVEL_TITULO, VARIAVEL_PESO).
-const obterCampoDaEtiqueta = (item, campoId) => {
-  try {
-    const dados =
-      typeof item.dados === 'string'
-        ? JSON.parse(item.dados)
-        : item.dados;
-
-    return dados.find(e => e.id === campoId)?.valor || '';
-  } catch {
-    return '';
-  }
-};
-
-const obterTituloDaEtiqueta = (item) => {
-  const titulo = obterCampoDaEtiqueta(item, 'VARIAVEL_TITULO');
-  return titulo || 'SEM TÍTULO';
-};
-
-const obterPesoDaEtiqueta = (item) => {
-  const peso = obterCampoDaEtiqueta(item, 'VARIAVEL_PESO');
-  return peso || 'SEM PESO';
-};
-
-const obterPesoEmGramas = (item) => {
-  const pesoBruto = String(obterPesoDaEtiqueta(item) || '').trim();
-  const match = pesoBruto.match(/^(\d{1,4})\s*(Kg|g)$/i);
-
-  if (!match) return null;
-
-  const valor = Number(match[1]);
-  const unidade = match[2].toLowerCase();
-
-  return unidade === 'kg' ? valor * 1000 : valor;
-};
-
-const normalizarTexto = (texto) => String(texto ?? '')
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .toLowerCase();
-
-
 // COMPONENTE QUE RENDERIZA O FORMULÁRIO COM OS CAMPOS DE ENTRADA PARA AS VARIÁVEIS.
 const FormularioEtiqueta = ({ etiquetas, MudarEtiqueta }) => (
   <div className="wrapper-tabela-variaveis">
@@ -205,11 +159,6 @@ const ImagemPreview = ({ src }) => (
 
 // COMPONENTE QUE RENDERIZA OS BOTÕES DE AÇÃO.
 const BtnAction = ({
-  filtro,
-  onFiltroChange,
-  etiquetasAgrupadas,
-  etiquetaSelecionadaId,
-  onSelecionarEtiqueta,
   quantidadeImpressao,
   onDiminuirQuantidade,
   onAumentarQuantidade,
@@ -218,7 +167,6 @@ const BtnAction = ({
   onVoltar,
   onImprimir,
   onCancelar,
-  carregandoLista,
   imprimirDisabled
 }) => (
   <>
@@ -230,24 +178,7 @@ const BtnAction = ({
       </div>
 
       <div className="filtro-etiquetas">
-        <div className="filtro-titulo">FILTRAR TÍTULO / CÓDIGO</div>
-        <div className="filtro-row">
-          <div className="filtro-combo">
-            <input
-              className="filtro-input"
-              placeholder="Pesquisar"
-              value={filtro}
-              onChange={onFiltroChange}
-            />
-            <FiltroEtiquetaSelect
-              value={etiquetaSelecionadaId}
-              onChange={onSelecionarEtiqueta}
-              grupos={etiquetasAgrupadas}
-              getOptionLabel={(item) => `${item.nome} / ${obterPesoDaEtiqueta(item)}`}
-              emptyText={carregandoLista ? 'Carregando etiquetas...' : 'Nenhuma etiqueta encontrada'}
-            />
-          </div>
-        </div>
+        <div className="filtro-titulo">DADOS DA CAIXA</div>
       </div>
     </div>
 
@@ -297,7 +228,7 @@ const BtnAction = ({
         className="btn-imprimir"
         onClick={onImprimir}
         disabled={imprimirDisabled}
-        title={imprimirDisabled ? 'Selecione uma etiqueta, informe a fabricação e o prazo de validade para imprimir.' : 'Enviar etiqueta para impressora.'}
+        title={imprimirDisabled ? 'Informe a fabricação, o prazo de validade e a quantidade para imprimir.' : 'Enviar etiqueta para impressora.'}
       >
         IMPRIMIR
       </button>
@@ -313,26 +244,7 @@ function ImprimirCaixa({ onVoltar }) {
   const [sucesso, setSucesso] = useState('');
   const [imprimindo, setImprimindo] = useState(false);
   const [imagemPreview, setImagemPreview] = useState('');
-  const [etiquetasSalvas, setEtiquetasSalvas] = useState([]);
-  const [filtro, setFiltro] = useState('');
-  const [carregandoLista, setCarregandoLista] = useState(false);
-  const [etiquetaSelecionadaId, setEtiquetaSelecionadaId] = useState('');
   const [quantidadeImpressao, setQuantidadeImpressao] = useState(1);
-
-  // OCULTAR ETIQUETAS DE MATÉRIA PRIMA E PESO ACIMA DE 500g
-  const etiquetasBase = useMemo(() => {
-    const tituloOcultoNormalizado = normalizarTexto(TITULO_OCULTO_NESTA_TELA);
-  
-    const etiquetasAte500g = etiquetasSalvas.filter(item => {
-      const pesoEmGramas = obterPesoEmGramas(item);
-      return pesoEmGramas !== null && pesoEmGramas <= 500;
-    });
-  
-    return etiquetasAte500g.filter(item => {
-      const titulo = normalizarTexto(obterTituloDaEtiqueta(item));
-      return titulo !== tituloOcultoNormalizado;
-    });
-  }, [etiquetasSalvas]);
 
   useEffect(() => {
     if (!erro) return undefined;
@@ -348,7 +260,7 @@ function ImprimirCaixa({ onVoltar }) {
     return () => clearTimeout(temporizadorMensagem);
   }, [sucesso]);
 
-  // FUNÇÃO PARA EXTRAIR AS VARIÁVEIS (EX: {VARIAVEL_TITULO}) DO CONTEÚDO DO ARQUIVO ZPL.
+  // FUNÇÃO PARA EXTRAIR AS VARIÁVEIS DO CONTEÚDO DO ARQUIVO ZPL.
   const extrairVariaveis = useCallback((conteudo) => {
     const regex = /\{(\w+)\}/g;
     const correspondencias = [...new Set([...conteudo.matchAll(regex)].map(m => m[1]))];
@@ -367,7 +279,6 @@ function ImprimirCaixa({ onVoltar }) {
 
   // FUNÇÃO PARA RESETAR O FORMULÁRIO PARA O ESTADO INICIAL.
   const resetarParaEstadoInicial = useCallback(() => {
-    setEtiquetaSelecionadaId('');
     setErro('');
     setSucesso('');
     setQuantidadeImpressao(1);
@@ -375,42 +286,6 @@ function ImprimirCaixa({ onVoltar }) {
     setImagemPreview('');
   }, [conteudoArquivo, criarCamposIniciais]);
 
-  // LISTAR ETIQUETA NO FORMULARIO
-  const listarEtiquetas = async () => {
-    try {
-      setCarregandoLista(true);
-      const res = await fetch(`${API_BASE_URL}/api/etiquetas`);
-      if (!res.ok) throw new Error('Erro ao carregar etiquetas salvas');
-      const data = await res.json();
-      if (!Array.isArray(data)) throw new Error('Lista de etiquetas inválida');
-      setEtiquetasSalvas(data);
-    } catch (err) {
-      setErro('Erro ao carregar etiquetas salvas');
-    } finally {
-      setCarregandoLista(false);
-    }
-  };
-
-  useEffect(() => {
-    listarEtiquetas();
-  }, []);
-
-  // AO SELECIONAR ETIQUETA DA LISTA
-  const aoSelecionarEtiqueta = (id) => {
-    if (!id) {
-      resetarParaEstadoInicial();
-      return;
-    }
-
-    setEtiquetaSelecionadaId(id);
-    setEtiquetas(criarCamposIniciais(conteudoArquivo));
-    setErro('');
-    setSucesso('');
-    setImagemPreview('');
-  };
-
-  const onFiltroChange = (e) => setFiltro(e.target.value);
-  const onSelecionarEtiqueta = (id) => aoSelecionarEtiqueta(id);
   const aoMudarQuantidadeImpressao = useCallback((valor) => {
     const somenteNumeros = String(valor ?? '').replace(/\D/g, '').slice(0, 3);
 
@@ -450,7 +325,7 @@ function ImprimirCaixa({ onVoltar }) {
 
   // EFEITO PARA ATUALIZAR A PRÉ-VISUALIZAÇÃO DA ETIQUETA QUANDO OS DADOS MUDAM.
   useEffect(() => {
-    if (!etiquetaSelecionadaId) {
+    if (!conteudoArquivo) {
       setImagemPreview('');
       return undefined;
     }
@@ -464,7 +339,7 @@ function ImprimirCaixa({ onVoltar }) {
     }, 300);
 
     return () => clearTimeout(temporizadorDebounce);
-  }, [obterConteudoProcessado, etiquetaSelecionadaId]);
+  }, [obterConteudoProcessado, conteudoArquivo]);
 
   // FUNÇÃO PARA LIDAR COM A MUDANÇA NOS CAMPOS DE INPUT.
   const aoMudarCampo = useCallback((id, valor) => {
@@ -480,7 +355,7 @@ function ImprimirCaixa({ onVoltar }) {
     ));
   }, []);
 
-  // FUNÇÃO PARA LIMPAR TODOS OS CAMPOS DO FORMULÁRIO E RESETAR O NOME DO ARQUIVO.
+  // LIMPA O PRAZO E OS CAMPOS CALCULADOS, MANTENDO A FABRICAÇÃO.
   const limparDados = () => {
     setEtiquetas(prev =>
       prev.map(etiqueta => {
@@ -497,29 +372,12 @@ function ImprimirCaixa({ onVoltar }) {
   const prazoValidadeDias = parseInt(prazoValidadeValor, 10);
   const dataFabricacaoFiltro = Boolean(obterDataFabricacaoDaLista(etiquetas));
   const prazoValidadeFiltro = Number.isInteger(prazoValidadeDias) && prazoValidadeDias > 0 && prazoValidadeDias <= 999;
-  const etiquetaSelecionadaOk = etiquetasBase.some(item => String(item.id) === String(etiquetaSelecionadaId));
   const quantidadeImpressaoNumero = Number.parseInt(quantidadeImpressao, 10);
   const quantidadeImpressaoFiltro = Number.isInteger(quantidadeImpressaoNumero) && quantidadeImpressaoNumero > 0 && quantidadeImpressaoNumero <= 999;
-
-  const etiquetasFiltradas = useMemo(() => {
-    const termo = normalizarTexto(filtro).trim();
-    if (!termo) return etiquetasBase;
-
-    return etiquetasBase.filter(item => {
-      const titulo = normalizarTexto(obterTituloDaEtiqueta(item));
-      const codigo = normalizarTexto(item.nome);
-      return titulo.includes(termo) || codigo.includes(termo);
-    });
-  }, [filtro, etiquetasBase]);
 
   const imprimirEtiqueta = async () => {
     setErro('');
     setSucesso('');
-
-    if (!etiquetaSelecionadaOk) {
-      setErro('Selecione uma etiqueta para imprimir.');
-      return;
-    }
 
     if (!prazoValidadeFiltro) {
       setErro('Informe o prazo de validade para imprimir.');
@@ -580,17 +438,6 @@ function ImprimirCaixa({ onVoltar }) {
     }
   };
 
-  // AGRUPA OS CADASTROS DO BANCO SEM GERAR VARIAÇÕES DE IMPRESSÃO.
-  const etiquetasAgrupadas = useMemo(() => {
-    const grupos = {};
-    etiquetasFiltradas.forEach(item => {
-      const titulo = obterTituloDaEtiqueta(item) || 'SEM TÍTULO';
-      if (!grupos[titulo]) grupos[titulo] = [];
-      grupos[titulo].push(item);
-    });
-    return grupos;
-  }, [etiquetasFiltradas]);
-
   // RENDERIZAÇÃO DO COMPONENTE.
   return (
     <div className="App">
@@ -602,11 +449,6 @@ function ImprimirCaixa({ onVoltar }) {
           {etiquetas.length > 0 ? (
             <>
               <BtnAction
-                filtro={filtro}
-                onFiltroChange={onFiltroChange}
-                etiquetasAgrupadas={etiquetasAgrupadas}
-                etiquetaSelecionadaId={etiquetaSelecionadaId}
-                onSelecionarEtiqueta={onSelecionarEtiqueta}
                 quantidadeImpressao={quantidadeImpressao}
                 onDiminuirQuantidade={() => setQuantidadeImpressao(prev => {
                   const quantidadeAtual = Number.parseInt(prev, 10);
@@ -622,16 +464,13 @@ function ImprimirCaixa({ onVoltar }) {
                 onVoltar={onVoltar}
                 onImprimir={imprimirEtiqueta}
                 onCancelar={resetarParaEstadoInicial}
-                carregandoLista={carregandoLista}
-                imprimirDisabled={!etiquetaSelecionadaOk || !prazoValidadeFiltro || !dataFabricacaoFiltro || !quantidadeImpressaoFiltro || !conteudoArquivo || imprimindo}
+                imprimirDisabled={!prazoValidadeFiltro || !dataFabricacaoFiltro || !quantidadeImpressaoFiltro || !conteudoArquivo || imprimindo}
               />
 
-              {etiquetaSelecionadaId && (
-                <div className="tabelas-section">
-                  <h2>ITENS PARA SUBSTITUIÇÃO:</h2>
-                  <FormularioEtiqueta etiquetas={etiquetas} MudarEtiqueta={aoMudarCampo} />
-                </div>
-              )}
+              <div className="tabelas-section">
+                <h2>ITENS PARA SUBSTITUIÇÃO:</h2>
+                <FormularioEtiqueta etiquetas={etiquetas} MudarEtiqueta={aoMudarCampo} />
+              </div>
             </>
           ) : (
             <p>Carregando</p>
